@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Drawing;             // Podstawowa obsługa Bitmap
 using System.Drawing.Imaging;     // Obsługa formatów pikseli (np. Format24bppRgb)
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices; // Do pracy z pamięcią (Marshal, IntPtr)
 using System.Text;
 using System.Threading.Tasks;
@@ -42,6 +43,7 @@ namespace Camera_WPF_HCNetSDK
         public int play_handle2 = 0;
         public int play_handle3 = 0;
         public int play_handle4 = 0;
+        public byte counter = 0;
 
         int m_lPort = -1;
         private REALDATACALLBACK RealData; // Przechowuj delegata, by GC go nie usunął
@@ -55,6 +57,8 @@ namespace Camera_WPF_HCNetSDK
             public static extern void CopyMemory(IntPtr destination, IntPtr source, uint length);
         }
 
+        [DllImport("kernel32.dll", EntryPoint = "RtlFillMemory", SetLastError = false)]
+        public static extern void FillMemory(IntPtr destination, uint length, byte fill);
 
         public MainWindow()
         {
@@ -136,13 +140,16 @@ namespace Camera_WPF_HCNetSDK
 
                     // Bezpośrednie kopiowanie z pamięci SDK do pamięci karty graficznej (BackBuffer)
                     // KOLEJNOŚĆ: Cel (WPF), Źródło (SDK), Rozmiar
-                    NativeMethods.CopyMemory(wbmp.BackBuffer, pBuf, (uint)nSize);
+                    // NativeMethods.CopyMemory(wbmp.BackBuffer, pBuf, (uint)(stride * height));
 
-                    wbmp.AddDirtyRect(new Int32Rect(0, 0, wbmp.PixelWidth, wbmp.PixelHeight));
+                    NativeMethods.CopyMemory(wbmp.BackBuffer, pBuf, (uint)nSize);
+                    //FillMemory(wbmp.BackBuffer, (uint)nSize/2, counter++);
+                    wbmp.AddDirtyRect(new Int32Rect(0, 0, wbmp.PixelWidth/3, wbmp.PixelHeight/3));
                 }
                 catch (Exception ex)
                 {
                     // Logowanie błędów TODO: dodać obsługę błędu 
+                    System.Diagnostics.Debug.WriteLine("Błąd konwersji: " + ex.Message);
                 }
                 finally
                 {
@@ -161,13 +168,18 @@ namespace Camera_WPF_HCNetSDK
                     {
                         if (PlayM4_OpenStream(m_lPort, pBuffer, dwBufSize, 1024 * 1024))
                         {
-                            PlayM4_SetDisplayType(m_lPort, 1); // Format RGB
+                            PlayM4_SetDisplayType(m_lPort, 0); // Format RGB
                             m_DecCallback = new DECCBFUN(DecCallback);
                             PlayM4_SetDecCallBack(m_lPort, m_DecCallback); // Użyj pola klasy
 
-                            if (!PlayM4_Play(m_lPort, IntPtr.Zero))
+                            try
                             {
-                                // Błąd startu dekodera
+                                PlayM4_Play(m_lPort, IntPtr.Zero);
+                            }
+                            catch (Exception ex)
+                            {
+                                // Logowanie błędów TODO: dodać obsługę błędu 
+                                System.Diagnostics.Debug.WriteLine("Błąd PlayM4_Play: " + ex.Message);
                             }
                         }
                     }
