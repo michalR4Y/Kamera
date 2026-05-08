@@ -20,6 +20,7 @@ using System.Windows.Shapes;
 
 using static CHCNetSDK.CHCNet;
 using static CHCNetSDK.PlayCtrl;
+using static System.Diagnostics.Debug;
 
 namespace Camera_WPF_HCNetSDK
 {
@@ -46,15 +47,9 @@ namespace Camera_WPF_HCNetSDK
         int m_lPort = -1;
         private REALDATACALLBACK RealData; // Przechowuj delegata, by GC go nie usunął
         private DECCBFUN m_DecCallback; // Przechowuj delegata callbacku dekodowania
+        private byte[] rgbBuffer; // Globalny bufor, by nie tworzyć go co klatkę
 
         WriteableBitmap wbmp = new WriteableBitmap(2688, 1520, 96, 96, PixelFormats.Bgr24, null);
-
-        internal static class NativeMethods
-        {
-            [DllImport("kernel32.dll", EntryPoint = "CopyMemory")]
-            public static extern void CopyMemory(IntPtr destination, IntPtr source, uint length);
-        }
-
 
         public MainWindow()
         {
@@ -114,7 +109,10 @@ namespace Camera_WPF_HCNetSDK
                 RealData = new REALDATACALLBACK(RealDataCallback);
                 play_handle1 = NET_DVR_RealPlay_V40(user_id_1, ref lpPreviewInfo1, RealData, pUser1);
                 // Rozpoczęcie podglądu
-                LeftCamera.Source = wbmp;
+                    MainCamera.Source = wbmp;
+                    RightCameraSmall.Source = wbmp;
+                    LeftCameraSmall.Source = wbmp;
+                    CenterCameraSmall.Source = wbmp;
 
                 state_playing = true;
             }
@@ -122,27 +120,35 @@ namespace Camera_WPF_HCNetSDK
         }
         private void DecCallback(int nPort, IntPtr pBuf, int nSize, ref PlayCtrl.FRAME_INFO pFrameInfo, int nUser, int nReserved2)
         {
-            if (nSize <= 0) return;
+            if (m_lPort == -1 || nSize <= 0 || pBuf == IntPtr.Zero)
+                return;
 
+            int width = pFrameInfo.nWidth;
+            int height = pFrameInfo.nHeight;
+            int expectedRgbSize = width * height * 3;
+
+            // Inicjalizacja bufora raz, przy zmianie rozdzielczości
+            if (rgbBuffer == null || rgbBuffer.Length != expectedRgbSize)
+            {
+                rgbBuffer = new byte[expectedRgbSize];
+            }
             // Przesyłamy do wątku UI
             Application.Current.Dispatcher.BeginInvoke(new Action(() =>
             {
+                if (!state_playing || wbmp == null)
+                    return;
+
                 try
                 {
-                    // Opcjonalnie: Sprawdź czy rozmiar wbmp zgadza się z width/height
-                    // Jeśli nie, należałoby zainicjować wbmp na nowo.
-
                     wbmp.Lock();
-
-                    // Bezpośrednie kopiowanie z pamięci SDK do pamięci karty graficznej (BackBuffer)
-                    // KOLEJNOŚĆ: Cel (WPF), Źródło (SDK), Rozmiar
-                    NativeMethods.CopyMemory(wbmp.BackBuffer, pBuf, (uint)nSize);
-
-                    wbmp.AddDirtyRect(new Int32Rect(0, 0, wbmp.PixelWidth, wbmp.PixelHeight));
+                    // Kopiujemy już gotowe dane RGB do naszej bitmapy WPF
+                    ConvertYV12ToRGB(pBuf, wbmp.BackBuffer, width, height);
+                    wbmp.AddDirtyRect(new Int32Rect(0, 0, width, height));
+                    Console.WriteLine("test");
                 }
                 catch (Exception ex)
                 {
-                    // Logowanie błędów TODO: dodać obsługę błędu 
+                    WriteLine("Błąd: " + ex.Message);
                 }
                 finally
                 {
@@ -161,13 +167,17 @@ namespace Camera_WPF_HCNetSDK
                     {
                         if (PlayM4_OpenStream(m_lPort, pBuffer, dwBufSize, 1024 * 1024))
                         {
-                            PlayM4_SetDisplayType(m_lPort, 1); // Format RGB
+                            PlayM4_SetDisplayType(m_lPort, 0); // Format RGB
                             m_DecCallback = new DECCBFUN(DecCallback);
-                            PlayM4_SetDecCallBack(m_lPort, m_DecCallback); // Użyj pola klasy
+                            PlayM4_SetDecCallBack(m_lPort, m_DecCallback);
 
-                            if (!PlayM4_Play(m_lPort, IntPtr.Zero))
+                            try
                             {
-                                // Błąd startu dekodera
+                                PlayM4_Play(m_lPort, IntPtr.Zero);
+                            }
+                            catch (Exception ex)
+                            {
+                                WriteLine("Błąd: " + ex.Message);
                             }
                         }
                     }
@@ -183,6 +193,48 @@ namespace Camera_WPF_HCNetSDK
                         }
                     }
                     break;
+            }
+        }
+
+        private void ConvertYV12ToRGB(IntPtr pBuf, IntPtr pDest, int width, int height)
+        {
+            int frameSize = width * height;
+            int chromaSize = frameSize >> 2;
+
+            unsafe
+            {
+                byte* yPtr = (byte*)pBuf;
+                byte* vPtr = yPtr + frameSize;
+                byte* uPtr = vPtr + chromaSize;
+                byte* dPtr = (byte*)pDest;
+
+                // Przetwarzanie równoległe na wielu rdzeniach
+                Parallel.For(0, height, i =>
+                {
+                    int yRowOffset = i * width;
+                    int uvRowOffset = (i >> 1) * (width >> 1);
+                    int destRowOffset = i * width * 3;
+
+                    for (int j = 0; j < width; j++)
+                    {
+                        int Y = yPtr[yRowOffset + j];
+                        int uvIdx = uvRowOffset + (j >> 1);
+                        int V = vPtr[uvIdx] - 128;
+                        int U = uPtr[uvIdx] - 128;
+
+                        // Szybka konwersja na liczbach całkowitych (Shift zamiast Float)
+                        int r = Y + ((V * 1436) >> 10);
+                        int g = Y - ((U * 352 + V * 731) >> 10);
+                        int b = Y + ((U * 1814) >> 10);
+
+                        int pixelIdx = destRowOffset + (j * 3);
+
+                        // Super szybki Clamp
+                        dPtr[pixelIdx] = (byte)(b < 0 ? 0 : (b > 255 ? 255 : b)); // B
+                        dPtr[pixelIdx + 1] = (byte)(g < 0 ? 0 : (g > 255 ? 255 : g)); // G
+                        dPtr[pixelIdx + 2] = (byte)(r < 0 ? 0 : (r > 255 ? 255 : r)); // R
+                    }
+                });
             }
         }
     }
