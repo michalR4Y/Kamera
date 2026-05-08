@@ -49,7 +49,7 @@ namespace Camera_WPF_HCNetSDK
         private REALDATACALLBACK RealData; // Przechowuj delegata, by GC go nie usunął
         private DECCBFUN m_DecCallback; // Przechowuj delegata callbacku dekodowania
 
-        WriteableBitmap wbmp = new WriteableBitmap(2688, 1520, 96, 96, PixelFormats.Bgr24, null);
+        WriteableBitmap wbmp = new WriteableBitmap(2688, 1520, 96, 96, PixelFormats.Rgb24, null);
 
         internal static class NativeMethods
         {
@@ -70,11 +70,6 @@ namespace Camera_WPF_HCNetSDK
         {
             if (state_playing)
             {
-                NET_DVR_StopRealPlay(play_handle1);
-                NET_DVR_StopRealPlay(play_handle2);
-                NET_DVR_StopRealPlay(play_handle3);
-                NET_DVR_StopRealPlay(play_handle4);
-
                 NET_DVR_Logout(user_id_1);
                 NET_DVR_Logout(user_id_2);
                 NET_DVR_Logout(user_id_3);
@@ -126,6 +121,10 @@ namespace Camera_WPF_HCNetSDK
         }
         private void DecCallback(int nPort, IntPtr pBuf, int nSize, ref PlayCtrl.FRAME_INFO pFrameInfo, int nUser, int nReserved2)
         {
+            // Pobierz parametry z ramki, zamiast zakładać je na sztywno
+            int width = pFrameInfo.nWidth;
+            int height = pFrameInfo.nHeight;
+
             if (nSize <= 0) return;
 
             // Przesyłamy do wątku UI
@@ -133,6 +132,14 @@ namespace Camera_WPF_HCNetSDK
             {
                 try
                 {
+                    // Sprawdź, czy bitmapa ma odpowiedni rozmiar (opcjonalnie zaktualizuj jeśli kamera zmieni rozdzielczość)
+                    if (wbmp.PixelWidth != width || wbmp.PixelHeight != height)
+                    {
+                        wbmp = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgr24, null);
+                        LeftCamera.Source = wbmp;
+                        System.Diagnostics.Debug.WriteLine("wbmp ERROR");
+                    }
+
                     // Opcjonalnie: Sprawdź czy rozmiar wbmp zgadza się z width/height
                     // Jeśli nie, należałoby zainicjować wbmp na nowo.
 
@@ -141,10 +148,10 @@ namespace Camera_WPF_HCNetSDK
                     // Bezpośrednie kopiowanie z pamięci SDK do pamięci karty graficznej (BackBuffer)
                     // KOLEJNOŚĆ: Cel (WPF), Źródło (SDK), Rozmiar
                     // NativeMethods.CopyMemory(wbmp.BackBuffer, pBuf, (uint)(stride * height));
-
+                  
                     NativeMethods.CopyMemory(wbmp.BackBuffer, pBuf, (uint)nSize);
                     //FillMemory(wbmp.BackBuffer, (uint)nSize/2, counter++);
-                    wbmp.AddDirtyRect(new Int32Rect(0, 0, wbmp.PixelWidth/3, wbmp.PixelHeight/3));
+                    wbmp.AddDirtyRect(new Int32Rect(0, 0, width / 3, height / 3));
                 }
                 catch (Exception ex)
                 {
@@ -168,9 +175,10 @@ namespace Camera_WPF_HCNetSDK
                     {
                         if (PlayM4_OpenStream(m_lPort, pBuffer, dwBufSize, 1024 * 1024))
                         {
-                            PlayM4_SetDisplayType(m_lPort, 0); // Format RGB
+                            PlayM4_SetDisplayType(m_lPort, 3); // Format RGB
+                           
                             m_DecCallback = new DECCBFUN(DecCallback);
-                            PlayM4_SetDecCallBack(m_lPort, m_DecCallback); // Użyj pola klasy
+                            PlayM4_SetDecCallBack(m_lPort, m_DecCallback);
 
                             try
                             {
