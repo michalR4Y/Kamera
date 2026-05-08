@@ -8,59 +8,56 @@
         Title="MainWindow" Height="800" Width="1200">
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="150*" />
-            <RowDefinition Height="300*" />
-            <RowDefinition Height="150*" />
+            <RowDefinition Height="150*"/>
+            <RowDefinition Height="300*"/>
+            <RowDefinition Height="100"/>
         </Grid.RowDefinitions>
 
         <!-- Wiersz 1 z własnym podziałem -->
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
             </Grid.ColumnDefinitions>
             <Grid Margin="2,2,2,2" Grid.Column="0">
-                <Image x:Name="LeftCameraSmall" HorizontalAlignment="Left"  Stretch="Uniform" />
+                <Image x:Name="LeftCameraSmall" HorizontalAlignment="Left"/>
             </Grid>
             <Grid Margin="2,2,2,2" Grid.Column="1">
-                <Image x:Name="CenterCameraSmall" HorizontalAlignment="Center" Stretch="Uniform" />
+                <Image x:Name="CenterCameraSmall" HorizontalAlignment="Center"/>
             </Grid>
             <Grid Margin="2,2,2,2" Grid.Column="2">
-                <Image x:Name="RightCameraSmall" HorizontalAlignment="Right" Stretch="Uniform" />
+                <Image x:Name="RightCameraSmall" HorizontalAlignment="Right"/>
             </Grid>
          </Grid>
 
         <!-- Wiersz 2 z innym podziałem -->
-        <Grid Margin="2,2,2,2" Grid.Row="1">
-            <Image x:Name="MainCamera" HorizontalAlignment="Center" VerticalAlignment="Center" Stretch="Uniform" />
+        <Grid Margin="0,2,0,0" Grid.Row="1">
+            <!--    <Border BorderBrush="Blue" BorderThickness="1" Margin="0,0,0,-100"/> -->
+            <Image x:Name="MainCamera" Margin="0,0,0,-100" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Grid>
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100"/>
+                <ColumnDefinition Width="100"/>
+                <ColumnDefinition Width="100"/>
+                <ColumnDefinition Width="100"/>
+                <ColumnDefinition Width="100"/>
+                <ColumnDefinition Width="100"/>
+                <ColumnDefinition />
+                <ColumnDefinition />
+                <ColumnDefinition />
+                <ColumnDefinition Width="100"/>
             </Grid.ColumnDefinitions>
 
-            <Image Margin="0,0,0,0" Grid.Column="0" Source="Icons/KompasCopy.png" Stretch="Fill" RenderTransformOrigin="0.5,0.5">
-                <Image.RenderTransform>
-                    <RotateTransform Angle="0" />
-                </Image.RenderTransform>
-            </Image>
-            <Image Margin="0,0,0,0" Grid.Column="1" Source="Icons/SztucznyHoryzont.png" Stretch="Fill" RenderTransformOrigin="0.5,0.5">
-                <Image.RenderTransform>
-                    <RotateTransform Angle="45" />
-                </Image.RenderTransform>
-            </Image>
+            <Image Margin="5,5,5,5" Grid.Column="0" Source="Icons/KompasCopy.png" HorizontalAlignment="Left" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
+            <Image Margin="5,5,5,5" Grid.Column="1" Source="Icons/SztucznyHoryzont.png" HorizontalAlignment="Left" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
+            <Image Margin="5,5,5,5" Grid.Column="2" Source="Icons/KompasCopy.png" HorizontalAlignment="Left" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
+            <Image Margin="5,5,5,5" Grid.Column="3" Source="Icons/SztucznyHoryzont.png" HorizontalAlignment="Left" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
+            <Image Margin="5,5,5,5" Grid.Column="4" Source="Icons/KompasCopy.png" HorizontalAlignment="Left" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
+            <Image Margin="5,5,5,5" Grid.Column="5" Source="Icons/SztucznyHoryzont.png" HorizontalAlignment="Left" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
 
-            <Button x:Name="ButtonD3" Grid.Column="2" Content="D_3" />
-            <Button x:Name="ButtonD4" Grid.Column="3" Content="D_4" />
-            <Button x:Name="ButtonD5" Grid.Column="4" Content="D_5" FontSize="30" />
-            <Button x:Name="ButtonStart" Grid.Column="5" FontSize="20px" Content="Start" Click="ButtonStart_Click" />
-
+            <Button x:Name="ButtonStart" Grid.Column="10" FontSize="30" Content="Start" Click="ButtonStart_Click" />
         </Grid>
     </Grid>
 </Window>

@@ -79,22 +79,48 @@ namespace Camera_WPF_HCNetSDK
             else
             {
                 string DVRIPAddress1 = "192.168.1.64";
-                //string DVRIPAddress2 = "192.168.1.65";
-                //string DVRIPAddress3 = "192.168.1.66";
+                string DVRIPAddress2 = "192.168.1.65";
+                string DVRIPAddress3 = "192.168.1.66";
 
                 Int16 DVRPortNumber = Int16.Parse("8000");
                 string DVRUserName = "admin";
                 string DVRPassword = "1qaz2wsx";
 
                 NET_DVR_DEVICEINFO_V30 DeviceInfo1 = new NET_DVR_DEVICEINFO_V30();
-                //NET_DVR_DEVICEINFO_V30 DeviceInfo2 = new NET_DVR_DEVICEINFO_V30();
-                //NET_DVR_DEVICEINFO_V30 DeviceInfo3 = new NET_DVR_DEVICEINFO_V30();
+                NET_DVR_DEVICEINFO_V30 DeviceInfo2 = new NET_DVR_DEVICEINFO_V30();
+                NET_DVR_DEVICEINFO_V30 DeviceInfo3 = new NET_DVR_DEVICEINFO_V30();
 
                 ButtonStart.Content = "Stop";
 
                 user_id_1 = NET_DVR_Login_V30(DVRIPAddress1, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo1);
+                user_id_2 = NET_DVR_Login_V30(DVRIPAddress2, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo2);
+                user_id_3 = NET_DVR_Login_V30(DVRIPAddress3, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo3);
 
                 NET_DVR_PREVIEWINFO lpPreviewInfo1 = new NET_DVR_PREVIEWINFO()
+                {
+                    hPlayWnd = IntPtr.Zero,
+                    lChannel = Int16.Parse("1"),
+                    dwStreamType = 0,   // 0-główny, 1-podstrumień
+                    dwLinkMode = 0,
+                    bBlocked = true,
+                    dwDisplayBufNum = 1,
+                    byProtoType = 0,
+                    byPreviewMode = 0
+                };
+
+                NET_DVR_PREVIEWINFO lpPreviewInfo2 = new NET_DVR_PREVIEWINFO()
+                {
+                    hPlayWnd = IntPtr.Zero,
+                    lChannel = Int16.Parse("1"),
+                    dwStreamType = 0,   // 0-główny, 1-podstrumień
+                    dwLinkMode = 0,
+                    bBlocked = true,
+                    dwDisplayBufNum = 1,
+                    byProtoType = 0,
+                    byPreviewMode = 0
+                };
+
+                NET_DVR_PREVIEWINFO lpPreviewInfo3 = new NET_DVR_PREVIEWINFO()
                 {
                     hPlayWnd = IntPtr.Zero,
                     lChannel = Int16.Parse("1"),
