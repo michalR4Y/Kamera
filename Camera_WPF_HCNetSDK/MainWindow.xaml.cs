@@ -53,13 +53,17 @@ namespace Camera_WPF_HCNetSDK
         private REALDATACALLBACK RealData2; // Przechowuj delegata, by GC go nie usunął
         private REALDATACALLBACK RealData3; // Przechowuj delegata, by GC go nie usunął
         
-        private DECCBFUN m_DecCallback; // Przechowuj delegata callbacku dekodowania
-        
-        private byte[] rgbBuffer; // Globalny bufor, by nie tworzyć go co klatkę
+        private DECCBFUN m_DecCallback1; // Przechowuj delegata callbacku dekodowania
+        private DECCBFUN m_DecCallback2; // Przechowuj delegata callbacku dekodowania
+        private DECCBFUN m_DecCallback3; // Przechowuj delegata callbacku dekodowania
 
-        WriteableBitmap wbmp1 = new WriteableBitmap(2688, 1520, 96, 96, PixelFormats.Bgr24, null);
+        private byte[] rgbBuffer1; // Globalny bufor, by nie tworzyć go co klatkę
+        private byte[] rgbBuffer2; // Globalny bufor, by nie tworzyć go co klatkę
+        private byte[] rgbBuffer3; // Globalny bufor, by nie tworzyć go co klatkę
+
+        WriteableBitmap wbmp1 = new WriteableBitmap(1280, 720, 96, 96, PixelFormats.Bgr24, null);
         WriteableBitmap wbmp2 = new WriteableBitmap(2560, 1440, 96, 96, PixelFormats.Bgr24, null);
-        WriteableBitmap wbmp3 = new WriteableBitmap(2560, 1440, 96, 96, PixelFormats.Bgr24, null);
+        WriteableBitmap wbmp3 = new WriteableBitmap(2560, 1440, 96, 96, PixelFormats.Bgr24, null);  // Kamera prawa
 
         public MainWindow()
         {
@@ -112,7 +116,19 @@ namespace Camera_WPF_HCNetSDK
                 user_id_2 = NET_DVR_Login_V30(DVRIPAddress2, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo2);
                 user_id_3 = NET_DVR_Login_V30(DVRIPAddress3, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo3);
 
-                NET_DVR_PREVIEWINFO lpPreviewInfo1 = new NET_DVR_PREVIEWINFO()
+                NET_DVR_PREVIEWINFO lpPreviewInfo1 = new NET_DVR_PREVIEWINFO() // Kamera centralna
+                {
+                    hPlayWnd = IntPtr.Zero,
+                    lChannel = Int16.Parse("2"),
+                    dwStreamType = 0,   // 0-główny, 1-podstrumień
+                    dwLinkMode = 0,
+                    bBlocked = true,
+                    dwDisplayBufNum = 1,
+                    byProtoType = 0,
+                    byPreviewMode = 0
+                };
+
+                NET_DVR_PREVIEWINFO lpPreviewInfo2 = new NET_DVR_PREVIEWINFO() // Kamera lewa
                 {
                     hPlayWnd = IntPtr.Zero,
                     lChannel = Int16.Parse("1"),
@@ -124,19 +140,7 @@ namespace Camera_WPF_HCNetSDK
                     byPreviewMode = 0
                 };
 
-                NET_DVR_PREVIEWINFO lpPreviewInfo2 = new NET_DVR_PREVIEWINFO()
-                {
-                    hPlayWnd = IntPtr.Zero,
-                    lChannel = Int16.Parse("1"),
-                    dwStreamType = 0,   // 0-główny, 1-podstrumień
-                    dwLinkMode = 0,
-                    bBlocked = true,
-                    dwDisplayBufNum = 1,
-                    byProtoType = 0,
-                    byPreviewMode = 0
-                };
-
-                NET_DVR_PREVIEWINFO lpPreviewInfo3 = new NET_DVR_PREVIEWINFO()
+                NET_DVR_PREVIEWINFO lpPreviewInfo3 = new NET_DVR_PREVIEWINFO() // Kamera prawa
                 {
                     hPlayWnd = IntPtr.Zero,
                     lChannel = Int16.Parse("1"),
@@ -179,8 +183,8 @@ namespace Camera_WPF_HCNetSDK
                         if (PlayM4_OpenStream(m_lPort1, pBuffer, dwBufSize, 1024 * 1024))
                         {
                             PlayM4_SetDisplayType(m_lPort1, 0); // Format RGB
-                            m_DecCallback = new DECCBFUN(DecCallback1);
-                            PlayM4_SetDecCallBack(m_lPort1, m_DecCallback);
+                            m_DecCallback1 = new DECCBFUN(DecCallback1);
+                            PlayM4_SetDecCallBack(m_lPort1, m_DecCallback1);
 
                             try
                             {
@@ -217,8 +221,8 @@ namespace Camera_WPF_HCNetSDK
                         if (PlayM4_OpenStream(m_lPort2, pBuffer, dwBufSize, 1024 * 1024))
                         {
                             PlayM4_SetDisplayType(m_lPort2, 0); // Format RGB
-                            m_DecCallback = new DECCBFUN(DecCallback2);
-                            PlayM4_SetDecCallBack(m_lPort2, m_DecCallback);
+                            m_DecCallback2 = new DECCBFUN(DecCallback2);
+                            PlayM4_SetDecCallBack(m_lPort2, m_DecCallback2);
 
                             try
                             {
@@ -255,8 +259,8 @@ namespace Camera_WPF_HCNetSDK
                         if (PlayM4_OpenStream(m_lPort3, pBuffer, dwBufSize, 1024 * 1024))
                         {
                             PlayM4_SetDisplayType(m_lPort3, 0); // Format RGB
-                            m_DecCallback = new DECCBFUN(DecCallback3);
-                            PlayM4_SetDecCallBack(m_lPort3, m_DecCallback);
+                            m_DecCallback3 = new DECCBFUN(DecCallback3);
+                            PlayM4_SetDecCallBack(m_lPort3, m_DecCallback3);
 
                             try
                             {
@@ -293,9 +297,9 @@ namespace Camera_WPF_HCNetSDK
             int expectedRgbSize = width * height * 3;
 
             // Inicjalizacja bufora raz, przy zmianie rozdzielczości
-            if (rgbBuffer == null || rgbBuffer.Length != expectedRgbSize)
+            if (rgbBuffer1 == null || rgbBuffer1.Length != expectedRgbSize)
             {
-                rgbBuffer = new byte[expectedRgbSize];
+                rgbBuffer1 = new byte[expectedRgbSize];
             }
             // Przesyłamy do wątku UI
             Application.Current.Dispatcher.BeginInvoke(new Action(() =>
@@ -331,9 +335,9 @@ namespace Camera_WPF_HCNetSDK
             int expectedRgbSize = width * height * 3;
 
             // Inicjalizacja bufora raz, przy zmianie rozdzielczości
-            if (rgbBuffer == null || rgbBuffer.Length != expectedRgbSize)
+            if (rgbBuffer2 == null || rgbBuffer2.Length != expectedRgbSize)
             {
-                rgbBuffer = new byte[expectedRgbSize];
+                rgbBuffer2 = new byte[expectedRgbSize];
             }
             // Przesyłamy do wątku UI
             Application.Current.Dispatcher.BeginInvoke(new Action(() =>
@@ -369,9 +373,9 @@ namespace Camera_WPF_HCNetSDK
             int expectedRgbSize = width * height * 3;
 
             // Inicjalizacja bufora raz, przy zmianie rozdzielczości
-            if (rgbBuffer == null || rgbBuffer.Length != expectedRgbSize)
+            if (rgbBuffer3 == null || rgbBuffer3.Length != expectedRgbSize)
             {
-                rgbBuffer = new byte[expectedRgbSize];
+                rgbBuffer3 = new byte[expectedRgbSize];
             }
             // Przesyłamy do wątku UI
             Application.Current.Dispatcher.BeginInvoke(new Action(() =>
