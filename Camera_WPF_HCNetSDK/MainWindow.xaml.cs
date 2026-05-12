@@ -29,9 +29,12 @@ namespace Camera_WPF_HCNetSDK
     /// </summary>
     public partial class MainWindow : Window
     {
-        private bool state_playing1;
-        private bool state_playing2;
-        private bool state_playing3;
+        private bool state_playing;
+        //private bool state_playing1;
+        //private bool state_playing2;
+        //private bool state_playing3;
+        //private bool state_playingThermoVision;
+
         public int user_id_1 = -1;
         public int user_id_2 = -1;
         public int user_id_3 = -1;
@@ -39,87 +42,127 @@ namespace Camera_WPF_HCNetSDK
         public IntPtr pUser1 = new IntPtr();
         public IntPtr pUser2 = new IntPtr();
         public IntPtr pUser3 = new IntPtr();
-        public IntPtr pUser4 = new IntPtr();
+        public IntPtr pUserThermoVision = new IntPtr();
 
         public int play_handle1 = 0;
         public int play_handle2 = 0;
         public int play_handle3 = 0;
-        public int play_handle4 = 0;
+        public int play_handle_thermovision = 0;
 
         int m_lPort1 = -1;
         int m_lPort2 = -1;
         int m_lPort3 = -1;
+        int m_lPortThermoVision = -1;
+
         private REALDATACALLBACK RealData1; // Przechowuj delegata, by GC go nie usunął
         private REALDATACALLBACK RealData2; // Przechowuj delegata, by GC go nie usunął
         private REALDATACALLBACK RealData3; // Przechowuj delegata, by GC go nie usunął
-        
+        private REALDATACALLBACK RealDataThermoVision; // Przechowuj delegata, by GC go nie usunął
+
         private DECCBFUN m_DecCallback1; // Przechowuj delegata callbacku dekodowania
         private DECCBFUN m_DecCallback2; // Przechowuj delegata callbacku dekodowania
         private DECCBFUN m_DecCallback3; // Przechowuj delegata callbacku dekodowania
+        private DECCBFUN m_DecCallbackThermoVision; // Przechowuj delegata callbacku dekodowania
 
-        private byte[] rgbBuffer1; // Globalny bufor, by nie tworzyć go co klatkę
-        private byte[] rgbBuffer2; // Globalny bufor, by nie tworzyć go co klatkę
-        private byte[] rgbBuffer3; // Globalny bufor, by nie tworzyć go co klatkę
+        WriteableBitmap wbmp1 = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);  // Kamera centralna
+        WriteableBitmap wbmp2 = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);  // Kamera Lewa
+        WriteableBitmap wbmp3 = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);  // Kamera Prawa
+        WriteableBitmap wbmpThermoVision = new WriteableBitmap(1280, 720, 96, 96, PixelFormats.Bgr24, null);    // Termowizja
 
-        WriteableBitmap wbmp1 = new WriteableBitmap(1280, 720, 96, 96, PixelFormats.Bgr24, null);
-        WriteableBitmap wbmp2 = new WriteableBitmap(2560, 1440, 96, 96, PixelFormats.Bgr24, null);
-        WriteableBitmap wbmp3 = new WriteableBitmap(2560, 1440, 96, 96, PixelFormats.Bgr24, null);  // Kamera prawa
+        private byte[] rawBuffer1;
+        private byte[] rawBuffer2;
+        private byte[] rawBuffer3;
+        private byte[] rawBufferThermo;
 
         public MainWindow()
         {
             InitializeComponent();
             NET_DVR_Init();
+
+            this.StateChanged += MainWindow_StateChanged;
+
+            string DVRIPAddress1 = "192.168.1.64";
+            string DVRIPAddress2 = "192.168.1.65";
+            string DVRIPAddress3 = "192.168.1.66";
+
+            Int16 DVRPortNumber = Int16.Parse("8000");
+            string DVRUserName = "admin";
+            string DVRPassword = "1qaz2wsx";
+
+            NET_DVR_DEVICEINFO_V30 DeviceInfo1 = new NET_DVR_DEVICEINFO_V30();
+            NET_DVR_DEVICEINFO_V30 DeviceInfo2 = new NET_DVR_DEVICEINFO_V30();
+            NET_DVR_DEVICEINFO_V30 DeviceInfo3 = new NET_DVR_DEVICEINFO_V30();
+
+            user_id_1 = NET_DVR_Login_V30(DVRIPAddress1, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo1);
+            user_id_2 = NET_DVR_Login_V30(DVRIPAddress2, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo2);
+            user_id_3 = NET_DVR_Login_V30(DVRIPAddress3, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo3);
+
+            RealData1 = new REALDATACALLBACK(RealDataCallback1);
+            RealData2 = new REALDATACALLBACK(RealDataCallback2);
+            RealData3 = new REALDATACALLBACK(RealDataCallback3);
+            RealDataThermoVision = new REALDATACALLBACK(RealDataCallbackThermoVision);
+
+            m_DecCallback1 = new DECCBFUN(DecCallback1);
+            m_DecCallback2 = new DECCBFUN(DecCallback2);
+            m_DecCallback3 = new DECCBFUN(DecCallback3);
+            m_DecCallbackThermoVision = new DECCBFUN(DecCallbackThermoVision);
+
         }
 
-        private void ButtonStart_Click(object sender, RoutedEventArgs e)
+        private void MainWindow_StateChanged(object sender, EventArgs e)
         {
-            if (state_playing1)
+            if (this.WindowState == WindowState.Maximized)
             {
-                NET_DVR_StopRealPlay(play_handle1);
-                NET_DVR_StopRealPlay(play_handle2);
-                NET_DVR_StopRealPlay(play_handle3);
-                NET_DVR_StopRealPlay(play_handle4);
-
-                NET_DVR_Logout(user_id_1);
-                NET_DVR_Logout(user_id_2);
-                NET_DVR_Logout(user_id_3);
-
-                PlayM4_Stop(m_lPort1);
-                PlayM4_Stop(m_lPort2);
-                PlayM4_Stop(m_lPort3);
-                PlayM4_CloseStream(m_lPort1);
-                PlayM4_CloseStream(m_lPort2);
-                PlayM4_CloseStream(m_lPort3);
-                ButtonStart.Content = "Start";
-
-                state_playing1 = false;
-                state_playing2 = false;
-                state_playing3 = false;
+                // Dodajemy margines równy grubości niewidocznej ramki systemowej
+                this.BorderThickness = new System.Windows.Thickness(8);
             }
             else
             {
-                string DVRIPAddress1 = "192.168.1.64";
-                string DVRIPAddress2 = "192.168.1.65";
-                string DVRIPAddress3 = "192.168.1.66";
+                this.BorderThickness = new System.Windows.Thickness(0);
+            }
+        }
+        private void ButtonStart_Click(object sender, RoutedEventArgs e)
+        {
+            if (state_playing)
+            {
+                bool wynik_5 = PlayM4_Stop(m_lPortThermoVision);
+                bool wynik_6 = PlayM4_Stop(m_lPort1);
+                bool wynik_7 = PlayM4_Stop(m_lPort2);
+                bool wynik_8 = PlayM4_Stop(m_lPort3);
 
-                Int16 DVRPortNumber = Int16.Parse("8000");
-                string DVRUserName = "admin";
-                string DVRPassword = "1qaz2wsx";
+                bool wynik_1 = PlayM4_CloseStream(m_lPortThermoVision);
+                bool wynik_2 = PlayM4_CloseStream(m_lPort1);
+                bool wynik_3 = PlayM4_CloseStream(m_lPort2);
+                bool wynik_4 = PlayM4_CloseStream(m_lPort3);
 
-                NET_DVR_DEVICEINFO_V30 DeviceInfo1 = new NET_DVR_DEVICEINFO_V30();
-                NET_DVR_DEVICEINFO_V30 DeviceInfo2 = new NET_DVR_DEVICEINFO_V30();
-                NET_DVR_DEVICEINFO_V30 DeviceInfo3 = new NET_DVR_DEVICEINFO_V30();
+                bool wynik_9 = NET_DVR_StopRealPlay(play_handle_thermovision);
+                bool wynik_10 = NET_DVR_StopRealPlay(play_handle1);
+                bool wynik_11 = NET_DVR_StopRealPlay(play_handle2);
+                bool wynik_12 = NET_DVR_StopRealPlay(play_handle3);
+                Console.WriteLine("Wynik_1  = " + wynik_1);
+                Console.WriteLine("Wynik_2  = " + wynik_2);
+                Console.WriteLine("Wynik_3  = " + wynik_3);
+                Console.WriteLine("Wynik_4  = " + wynik_4);
+                Console.WriteLine("Wynik_5  = " + wynik_5);
+                Console.WriteLine("Wynik_6  = " + wynik_6);
+                Console.WriteLine("Wynik_7  = " + wynik_7);
+                Console.WriteLine("Wynik_8  = " + wynik_8);
+                Console.WriteLine("Wynik_9  = " + wynik_9);
+                Console.WriteLine("Wynik_10 = " + wynik_10);
+                Console.WriteLine("Wynik_11 = " + wynik_11);
+                Console.WriteLine("Wynik_12 = " + wynik_12);
 
+                state_playing = false;
+                ButtonStart.Content = "Start";
+            }
+            else
+            {
                 ButtonStart.Content = "Stop";
-
-                user_id_1 = NET_DVR_Login_V30(DVRIPAddress1, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo1);
-                user_id_2 = NET_DVR_Login_V30(DVRIPAddress2, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo2);
-                user_id_3 = NET_DVR_Login_V30(DVRIPAddress3, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo3);
 
                 NET_DVR_PREVIEWINFO lpPreviewInfo1 = new NET_DVR_PREVIEWINFO() // Kamera centralna
                 {
                     hPlayWnd = IntPtr.Zero,
-                    lChannel = Int16.Parse("2"),
+                    lChannel = Int16.Parse("1"),
                     dwStreamType = 0,   // 0-główny, 1-podstrumień
                     dwLinkMode = 0,
                     bBlocked = true,
@@ -152,23 +195,30 @@ namespace Camera_WPF_HCNetSDK
                     byPreviewMode = 0
                 };
 
-                RealData1 = new REALDATACALLBACK(RealDataCallback1);
-                RealData2 = new REALDATACALLBACK(RealDataCallback2);
-                RealData3 = new REALDATACALLBACK(RealDataCallback3);
+                NET_DVR_PREVIEWINFO lpPreviewInfoThermoVision = new NET_DVR_PREVIEWINFO() // Kamera centralna - termowizja
+                {
+                    hPlayWnd = IntPtr.Zero,
+                    lChannel = Int16.Parse("2"),
+                    dwStreamType = 0,   // 0-główny, 1-podstrumień
+                    dwLinkMode = 1,
+                    bBlocked = true,
+                    dwDisplayBufNum = 1,
+                    byProtoType = 0,
+                    byPreviewMode = 0
+                };
 
+                play_handle_thermovision = NET_DVR_RealPlay_V40(user_id_1, ref lpPreviewInfoThermoVision, RealDataThermoVision, pUserThermoVision);
                 play_handle1 = NET_DVR_RealPlay_V40(user_id_1, ref lpPreviewInfo1, RealData1, pUser1);
                 play_handle2 = NET_DVR_RealPlay_V40(user_id_2, ref lpPreviewInfo2, RealData2, pUser2);
                 play_handle3 = NET_DVR_RealPlay_V40(user_id_3, ref lpPreviewInfo3, RealData3, pUser3);
-                
+
                 // Rozpoczęcie podglądu
-                MainCamera.Source = wbmp1;
+                MainCamera.Source = wbmpThermoVision;
+                CenterCameraSmall.Source = wbmp1;
                 RightCameraSmall.Source = wbmp2;
                 LeftCameraSmall.Source = wbmp3;
-                CenterCameraSmall.Source = wbmp1;
 
-                state_playing1 = true;
-                state_playing2 = true;
-                state_playing3 = true;
+                state_playing = true;
             }
 
         }
@@ -177,13 +227,15 @@ namespace Camera_WPF_HCNetSDK
             switch (dwDataType)
             {
                 case NET_DVR_SYSHEAD:
-                    if (!PlayM4_GetPort(ref m_lPort1)) return;
+                    if (!PlayM4_GetPort(ref m_lPort1)) 
+                        return;
+
                     if (dwBufSize > 0)
                     {
                         if (PlayM4_OpenStream(m_lPort1, pBuffer, dwBufSize, 1024 * 1024))
                         {
-                            PlayM4_SetDisplayType(m_lPort1, 0); // Format RGB
-                            m_DecCallback1 = new DECCBFUN(DecCallback1);
+                            //PlayM4_SetDisplayType(m_lPort1, 0); // Format RGB
+                            //m_DecCallback1 = new DECCBFUN(DecCallback1);
                             PlayM4_SetDecCallBack(m_lPort1, m_DecCallback1);
 
                             try
@@ -192,7 +244,7 @@ namespace Camera_WPF_HCNetSDK
                             }
                             catch (Exception ex)
                             {
-                                WriteLine("Błąd: " + ex.Message);
+                                Console.WriteLine("Błąd: " + ex.Message);
                             }
                         }
                     }
@@ -201,10 +253,14 @@ namespace Camera_WPF_HCNetSDK
                 case NET_DVR_STREAMDATA: // Dane wideo
                     if (m_lPort1 != -1 && dwBufSize > 0)
                     {
-                        // Przekazanie danych do dekodera
-                        if (!PlayM4_InputData(m_lPort1, pBuffer, dwBufSize))
+                        Console.WriteLine("RealDataCallback1 - STREAMDATA");
+                        try
                         {
-                            // Ewentualna obsługa błędu przepełnienia bufora
+                            PlayM4_InputData(m_lPort1, pBuffer, dwBufSize);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("Błąd: " + ex.Message);
                         }
                     }
                     break;
@@ -215,13 +271,15 @@ namespace Camera_WPF_HCNetSDK
             switch (dwDataType)
             {
                 case NET_DVR_SYSHEAD:
-                    if (!PlayM4_GetPort(ref m_lPort2)) return;
+                    if (!PlayM4_GetPort(ref m_lPort2)) 
+                        return;
+
                     if (dwBufSize > 0)
                     {
                         if (PlayM4_OpenStream(m_lPort2, pBuffer, dwBufSize, 1024 * 1024))
                         {
-                            PlayM4_SetDisplayType(m_lPort2, 0); // Format RGB
-                            m_DecCallback2 = new DECCBFUN(DecCallback2);
+                            //PlayM4_SetDisplayType(m_lPort2, 0); // Format RGB
+                            //m_DecCallback2 = new DECCBFUN(DecCallback2);
                             PlayM4_SetDecCallBack(m_lPort2, m_DecCallback2);
 
                             try
@@ -230,7 +288,7 @@ namespace Camera_WPF_HCNetSDK
                             }
                             catch (Exception ex)
                             {
-                                WriteLine("Błąd: " + ex.Message);
+                                Console.WriteLine("Błąd: " + ex.Message);
                             }
                         }
                     }
@@ -239,10 +297,14 @@ namespace Camera_WPF_HCNetSDK
                 case NET_DVR_STREAMDATA: // Dane wideo
                     if (m_lPort2 != -1 && dwBufSize > 0)
                     {
-                        // Przekazanie danych do dekodera
-                        if (!PlayM4_InputData(m_lPort2, pBuffer, dwBufSize))
+                        Console.WriteLine("RealDataCallback2 - STREAMDATA");
+                        try
                         {
-                            // Ewentualna obsługa błędu przepełnienia bufora
+                            PlayM4_InputData(m_lPort2, pBuffer, dwBufSize);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("Błąd: " + ex.Message);
                         }
                     }
                     break;
@@ -253,13 +315,15 @@ namespace Camera_WPF_HCNetSDK
             switch (dwDataType)
             {
                 case NET_DVR_SYSHEAD:
-                    if (!PlayM4_GetPort(ref m_lPort3)) return;
+                    if (!PlayM4_GetPort(ref m_lPort3)) 
+                        return;
+
                     if (dwBufSize > 0)
                     {
                         if (PlayM4_OpenStream(m_lPort3, pBuffer, dwBufSize, 1024 * 1024))
                         {
-                            PlayM4_SetDisplayType(m_lPort3, 0); // Format RGB
-                            m_DecCallback3 = new DECCBFUN(DecCallback3);
+                            //PlayM4_SetDisplayType(m_lPort3, 0); // Format RGB
+                            //m_DecCallback3 = new DECCBFUN(DecCallback3);
                             PlayM4_SetDecCallBack(m_lPort3, m_DecCallback3);
 
                             try
@@ -268,7 +332,7 @@ namespace Camera_WPF_HCNetSDK
                             }
                             catch (Exception ex)
                             {
-                                WriteLine("Błąd: " + ex.Message);
+                                Console.WriteLine("Błąd: " + ex.Message);
                             }
                         }
                     }
@@ -277,10 +341,58 @@ namespace Camera_WPF_HCNetSDK
                 case NET_DVR_STREAMDATA: // Dane wideo
                     if (m_lPort3 != -1 && dwBufSize > 0)
                     {
-                        // Przekazanie danych do dekodera
-                        if (!PlayM4_InputData(m_lPort3, pBuffer, dwBufSize))
+                        Console.WriteLine("RealDataCallback3 - STREAMDATA");
+                        try
                         {
-                            // Ewentualna obsługa błędu przepełnienia bufora
+                            PlayM4_InputData(m_lPort3, pBuffer, dwBufSize);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("Błąd: " + ex.Message);
+                        }
+                    }
+                    break;
+            }
+        }
+        private void RealDataCallbackThermoVision(int lRealHandle, uint dwDataType, IntPtr pBuffer, uint dwBufSize, IntPtr pUser)
+        {
+            switch (dwDataType)
+            {
+                case NET_DVR_SYSHEAD:
+                    if (!PlayM4_GetPort(ref m_lPortThermoVision)) return;
+
+                    if (dwBufSize > 0)
+                    {
+                        if (PlayM4_OpenStream(m_lPortThermoVision, pBuffer, dwBufSize, 1024 * 1024))
+                        {
+                            //PlayM4_SetDisplayType(m_lPortThermoVision, 0); // Format RGB
+                            //m_DecCallbackThermoVision = new DECCBFUN(DecCallbackThermoVision);
+                            PlayM4_SetDecCallBack(m_lPortThermoVision, m_DecCallbackThermoVision);
+
+                            try
+                            {
+                                PlayM4_Play(m_lPortThermoVision, IntPtr.Zero);
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine("Błąd: " + ex.Message);
+                            }
+                        }
+                    }
+                    break;
+
+                case NET_DVR_STREAMDATA: // Dane wideo
+                    if (m_lPortThermoVision != -1 && dwBufSize > 0)
+                    {
+                        Console.WriteLine("RealDataCallbackThermoVision - STREAMDATA");
+                        try
+                        {
+                            PlayM4_InputData(m_lPortThermoVision, pBuffer, dwBufSize);
+                            Console.WriteLine("RealDataCallbackThermoVision - PlayM4_InputData");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("Błąd: " + ex.Message);
                         }
                     }
                     break;
@@ -296,28 +408,26 @@ namespace Camera_WPF_HCNetSDK
             int height = pFrameInfo.nHeight;
             int expectedRgbSize = width * height * 3;
 
-            // Inicjalizacja bufora raz, przy zmianie rozdzielczości
-            if (rgbBuffer1 == null || rgbBuffer1.Length != expectedRgbSize)
-            {
-                rgbBuffer1 = new byte[expectedRgbSize];
-            }
-            // Przesyłamy do wątku UI
+            if (rawBuffer1 == null || rawBuffer1.Length != nSize)
+                rawBuffer1 = new byte[nSize];
+
+            Marshal.Copy(pBuf, rawBuffer1, 0, nSize);
             Application.Current.Dispatcher.BeginInvoke(new Action(() =>
             {
-                if (!state_playing1 || wbmp1 == null)
+                if (!state_playing || wbmp1 == null)
                     return;
 
                 try
                 {
                     wbmp1.Lock();
                     // Kopiujemy już gotowe dane RGB do naszej bitmapy WPF
-                    ConvertYV12ToRGB(pBuf, wbmp1.BackBuffer, width, height);
+                    ConvertYV12ToRGB(rawBuffer1, wbmp1.BackBuffer, width, height);
                     wbmp1.AddDirtyRect(new Int32Rect(0, 0, width, height));
-                    Console.WriteLine("test");
+                    Console.WriteLine("DecCallback1");
                 }
                 catch (Exception ex)
                 {
-                    WriteLine("Błąd: " + ex.Message);
+                    Console.WriteLine("Błąd: " + ex.Message);
                 }
                 finally
                 {
@@ -334,28 +444,26 @@ namespace Camera_WPF_HCNetSDK
             int height = pFrameInfo.nHeight;
             int expectedRgbSize = width * height * 3;
 
-            // Inicjalizacja bufora raz, przy zmianie rozdzielczości
-            if (rgbBuffer2 == null || rgbBuffer2.Length != expectedRgbSize)
-            {
-                rgbBuffer2 = new byte[expectedRgbSize];
-            }
-            // Przesyłamy do wątku UI
+            if (rawBuffer2 == null || rawBuffer2.Length != nSize)
+                rawBuffer2 = new byte[nSize];
+
+            Marshal.Copy(pBuf, rawBuffer2, 0, nSize);
             Application.Current.Dispatcher.BeginInvoke(new Action(() =>
             {
-                if (!state_playing2 || wbmp2 == null)
+                if (!state_playing || wbmp2 == null)
                     return;
 
                 try
                 {
                     wbmp2.Lock();
                     // Kopiujemy już gotowe dane RGB do naszej bitmapy WPF
-                    ConvertYV12ToRGB(pBuf, wbmp2.BackBuffer, width, height);
+                    ConvertYV12ToRGB(rawBuffer2, wbmp2.BackBuffer, width, height);
                     wbmp2.AddDirtyRect(new Int32Rect(0, 0, width, height));
-                    Console.WriteLine("test");
+                    Console.WriteLine("DecCallback2");
                 }
                 catch (Exception ex)
                 {
-                    WriteLine("Błąd: " + ex.Message);
+                    Console.WriteLine("Błąd: " + ex.Message);
                 }
                 finally
                 {
@@ -372,28 +480,26 @@ namespace Camera_WPF_HCNetSDK
             int height = pFrameInfo.nHeight;
             int expectedRgbSize = width * height * 3;
 
-            // Inicjalizacja bufora raz, przy zmianie rozdzielczości
-            if (rgbBuffer3 == null || rgbBuffer3.Length != expectedRgbSize)
-            {
-                rgbBuffer3 = new byte[expectedRgbSize];
-            }
-            // Przesyłamy do wątku UI
+            if (rawBuffer3 == null || rawBuffer3.Length != nSize)
+                rawBuffer3 = new byte[nSize];
+
+            Marshal.Copy(pBuf, rawBuffer3, 0, nSize);
             Application.Current.Dispatcher.BeginInvoke(new Action(() =>
             {
-                if (!state_playing3 || wbmp3 == null)
+                if (!state_playing || wbmp3 == null)
                     return;
 
                 try
                 {
                     wbmp3.Lock();
                     // Kopiujemy już gotowe dane RGB do naszej bitmapy WPF
-                    ConvertYV12ToRGB(pBuf, wbmp3.BackBuffer, width, height);
+                    ConvertYV12ToRGB(rawBuffer3, wbmp3.BackBuffer, width, height);
                     wbmp3.AddDirtyRect(new Int32Rect(0, 0, width, height));
-                    Console.WriteLine("test");
+                    Console.WriteLine("DecCallback3");
                 }
                 catch (Exception ex)
                 {
-                    WriteLine("Błąd: " + ex.Message);
+                    Console.WriteLine("Błąd: " + ex.Message);
                 }
                 finally
                 {
@@ -401,47 +507,151 @@ namespace Camera_WPF_HCNetSDK
                 }
             }));
         }
+        private void DecCallbackThermoVision(int nPort, IntPtr pBuf, int nSize, ref PlayCtrl.FRAME_INFO pFrameInfo, int nUser, int nReserved2)
+        {
+            if (m_lPortThermoVision == -1 || nSize <= 0 || pBuf == IntPtr.Zero)
+            {
+                Console.WriteLine("DecCallbackTV Begin");
+                return;
+            }
 
-        private void ConvertYV12ToRGB(IntPtr pBuf, IntPtr pDest, int width, int height)
+            int width = pFrameInfo.nWidth;
+            int height = pFrameInfo.nHeight;
+            int expectedRgbSize = width * height * 3;
+
+            if (rawBufferThermo == null || rawBufferThermo.Length != nSize)
+                rawBufferThermo = new byte[nSize];
+
+            Marshal.Copy(pBuf, rawBufferThermo, 0, nSize);
+            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (!state_playing || wbmpThermoVision == null)
+                {
+                    Console.WriteLine("DecCallbackTV Return");
+                    return;
+                }
+
+                try
+                {
+                    wbmpThermoVision.Lock();
+                    // Kopiujemy już gotowe dane RGB do naszej bitmapy WPF
+                    ConvertYV12ToRGB(rawBufferThermo, wbmpThermoVision.BackBuffer, width, height);
+                    wbmpThermoVision.AddDirtyRect(new Int32Rect(0, 0, width, height));
+                    Console.WriteLine("DecCallbackTV");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Błąd: " + ex.Message);
+                }
+                finally
+                {
+                    Console.WriteLine("DecCallbackTV Unlock");
+                    wbmpThermoVision.Unlock();
+                }
+            }));
+        }
+
+        private void ConvertYV12ToRGB(byte[] pBuf, IntPtr pDest, int width, int height)
         {
             int frameSize = width * height;
             int chromaSize = frameSize >> 2;
 
             unsafe
             {
-                byte* yPtr = (byte*)pBuf;
-                byte* vPtr = yPtr + frameSize;
-                byte* uPtr = vPtr + chromaSize;
-                byte* dPtr = (byte*)pDest;
-
-                // Przetwarzanie równoległe na wielu rdzeniach
-                Parallel.For(0, height, i =>
+                fixed (byte* pSrc = pBuf) // Blokujemy tablicę w pamięci na czas konwersji
                 {
-                    int yRowOffset = i * width;
-                    int uvRowOffset = (i >> 1) * (width >> 1);
-                    int destRowOffset = i * width * 3;
+                    byte* yPtr = pSrc;
+                    byte* vPtr = yPtr + frameSize;
+                    byte* uPtr = vPtr + chromaSize;
+                    byte* dPtr = (byte*)pDest;
 
-                    for (int j = 0; j < width; j++)
+                    // Przetwarzanie równoległe na wielu rdzeniach
+                    Parallel.For(0, height, i =>
                     {
-                        int Y = yPtr[yRowOffset + j];
-                        int uvIdx = uvRowOffset + (j >> 1);
-                        int V = vPtr[uvIdx] - 128;
-                        int U = uPtr[uvIdx] - 128;
+                        int yRowOffset = i * width;
+                        int uvRowOffset = (i >> 1) * (width >> 1);
+                        int destRowOffset = i * width * 3;
 
-                        // Szybka konwersja na liczbach całkowitych (Shift zamiast Float)
-                        int r = Y + ((V * 1436) >> 10);
-                        int g = Y - ((U * 352 + V * 731) >> 10);
-                        int b = Y + ((U * 1814) >> 10);
+                        for (int j = 0; j < width; j++)
+                        {
+                            int Y = yPtr[yRowOffset + j];
+                            int uvIdx = uvRowOffset + (j >> 1);
+                            int V = vPtr[uvIdx] - 128;
+                            int U = uPtr[uvIdx] - 128;
 
-                        int pixelIdx = destRowOffset + (j * 3);
+                            // Szybka konwersja na liczbach całkowitych (Shift zamiast Float)
+                            int r = Y + ((V * 1436) >> 10);
+                            int g = Y - ((U * 352 + V * 731) >> 10);
+                            int b = Y + ((U * 1814) >> 10);
 
-                        // Super szybki Clamp
-                        dPtr[pixelIdx] = (byte)(b < 0 ? 0 : (b > 255 ? 255 : b)); // B
-                        dPtr[pixelIdx + 1] = (byte)(g < 0 ? 0 : (g > 255 ? 255 : g)); // G
-                        dPtr[pixelIdx + 2] = (byte)(r < 0 ? 0 : (r > 255 ? 255 : r)); // R
-                    }
-                });
+                            int pixelIdx = destRowOffset + (j * 3);
+
+                            // Super szybki Clamp
+                            dPtr[pixelIdx] = (byte)(b < 0 ? 0 : (b > 255 ? 255 : b)); // B
+                            dPtr[pixelIdx + 1] = (byte)(g < 0 ? 0 : (g > 255 ? 255 : g)); // G
+                            dPtr[pixelIdx + 2] = (byte)(r < 0 ? 0 : (r > 255 ? 255 : r)); // R
+                        }
+                    });
+                }
+            }
+        }
+        private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed)
+                this.DragMove();
+        }
+
+        // Zamykanie okna
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            bool wynik_5 = PlayM4_Stop(m_lPortThermoVision);
+            bool wynik_6 = PlayM4_Stop(m_lPort1);
+            bool wynik_7 = PlayM4_Stop(m_lPort2);
+            bool wynik_8 = PlayM4_Stop(m_lPort3);
+
+            bool wynik_1 = PlayM4_CloseStream(m_lPortThermoVision);
+            bool wynik_2 = PlayM4_CloseStream(m_lPort1);
+            bool wynik_3 = PlayM4_CloseStream(m_lPort2);
+            bool wynik_4 = PlayM4_CloseStream(m_lPort3);
+
+            bool wynik_9 = NET_DVR_StopRealPlay(m_lPortThermoVision);
+            bool wynik_10 = NET_DVR_StopRealPlay(play_handle1);
+            bool wynik_11 = NET_DVR_StopRealPlay(play_handle2);
+            bool wynik_12 = NET_DVR_StopRealPlay(play_handle3);
+
+            NET_DVR_Logout(user_id_1);
+            NET_DVR_Logout(user_id_2);
+            NET_DVR_Logout(user_id_3);
+            this.Close();
+        }
+
+        private void Maximize_Click(object sender, RoutedEventArgs e)
+        {
+            if (this.WindowState == WindowState.Maximized)
+            {
+                // Jeśli okno jest już zmaksymalizowane, przywróć je do normalnego rozmiaru
+                this.WindowState = WindowState.Normal;
+            }
+            else
+            {
+                // W przeciwnym razie zmaksymalizuj
+                this.WindowState = WindowState.Maximized;
+            }
+        }
+
+        private void Minimize_Click(object sender, RoutedEventArgs e)
+        {
+            if (this.WindowState == WindowState.Minimized)
+            {
+                // Jeśli okno jest już zmaksymalizowane, przywróć je do normalnego rozmiaru
+                this.WindowState = WindowState.Normal;
+            }
+            else
+            {
+                // W przeciwnym razie zmaksymalizuj
+                this.WindowState = WindowState.Minimized;
             }
         }
     }
 }
+

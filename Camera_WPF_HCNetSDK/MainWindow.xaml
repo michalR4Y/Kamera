@@ -5,16 +5,81 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Camera_WPF_HCNetSDK"
         mc:Ignorable="d"
+        WindowStyle="None"
+        AllowsTransparency="True"
         Title="MainWindow" Height="800" Width="1200">
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="30"/>
             <RowDefinition Height="150*"/>
             <RowDefinition Height="300*"/>
             <RowDefinition Height="100"/>
         </Grid.RowDefinitions>
 
+        <Grid Grid.Row="0" VerticalAlignment="Top" Height="30" Background="Blue" MouseDown="TitleBar_MouseDown">
+            <TextBlock Text="Camera_WPF_HCNetSDK_Main" VerticalAlignment="Center" Margin="10,0"/>
+            <Button x:Name="X" Margin = "1165,0,0,0" HorizontalAlignment="Right" Click="CloseButton_Click" Width="30" Background="Transparent" BorderThickness="0" Foreground="White">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <!-- Domyślna ikona: Pojedynczy kwadrat (Normalny stan) -->
+                        <Setter Property="Content" Value="&#xE8BB;"/>
+                        <Setter Property="FontSize" Value="15"/>
+                        <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+                        <Setter Property="Foreground" Value="Black"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <!-- TUTAJ zmieniasz kolor tła po najechaniu -->
+                                <Setter Property="Background" Value="#DCDCDC"/> 
+                                <!-- Opcjonalnie zmiana koloru fonta po najechaniu -->
+                                <Setter Property="Foreground" Value="Black"/>
+                            </Trigger>
+                         </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+            <Button x:Name="MaximizeButton" Margin = "0,0,45,0" HorizontalAlignment="Right" Click="Maximize_Click" Width="30" Background="Transparent" BorderThickness="0" Foreground="White">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <!-- Domyślna ikona: Pojedynczy kwadrat (Normalny stan) -->
+                        <Setter Property="Content" Value="&#xE922;"/>
+                        <Setter Property="FontSize" Value="15"/>
+                        <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+                        <Setter Property="Foreground" Value="Black"/>
+                        <Style.Triggers>
+                            <!-- Zmiana ikony na dwa kwadraciki, gdy okno jest zmaksymalizowane -->
+                            <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                                <Setter Property="Content" Value="&#xE923;"/>
+                            </DataTrigger>
+
+                            <!-- Opcjonalnie: efekt po najechaniu myszką -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="Red"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+            <Button x:Name="MinimizeButton" Margin = "0,0,85,0"  HorizontalAlignment="Right" Click="Minimize_Click" Width="30" Background="Transparent" BorderThickness="0" Foreground="White">
+                <Button.Style>
+                    <Style TargetType="Button">
+                        <!-- Domyślna ikona: Pojedynczy kwadrat (Normalny stan) -->
+                        <Setter Property="Content" Value="&#xE921;"/>
+                        <Setter Property="FontSize" Value="15"/>
+                        <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+                        <Setter Property="Foreground" Value="Black"/>
+                        <Style.Triggers>
+                            <!-- Opcjonalnie: efekt po najechaniu myszką -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="Red"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+        </Grid>
+
         <!-- Wiersz 1 z własnym podziałem -->
-        <Grid Grid.Row="0">
+        <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition/>
                 <ColumnDefinition/>
@@ -29,14 +94,14 @@
             <Grid Margin="2,2,2,2" Grid.Column="2">
                 <Image x:Name="RightCameraSmall" HorizontalAlignment="Right"/>
             </Grid>
-         </Grid>
+        </Grid>
 
         <!-- Wiersz 2 z innym podziałem -->
-        <Grid Margin="0,2,0,0" Grid.Row="1">
+        <Grid Margin="0,2,0,0" Grid.Row="2">
             <!--    <Border BorderBrush="Blue" BorderThickness="1" Margin="0,0,0,-100"/> -->
             <Image x:Name="MainCamera" Margin="0,0,0,-100" HorizontalAlignment="Center" VerticalAlignment="Center"/>
         </Grid>
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="100"/>
                 <ColumnDefinition Width="100"/>
