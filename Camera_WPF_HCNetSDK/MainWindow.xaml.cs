@@ -18,7 +18,7 @@ using System.Windows.Media.Media3D;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-using static CHCNetSDK.CHCNet;
+//using static CHCNetSDK.CHCNet;
 using static CHCNetSDK.PlayCtrl;
 using static System.Diagnostics.Debug;
 
@@ -54,10 +54,10 @@ namespace Camera_WPF_HCNetSDK
         int m_Port_Right_Camera = -1;
         int m_Port_Center_Camera_ThermoVision = -1;
 
-        private REALDATACALLBACK RealData1; // Przechowuj delegata, by GC go nie usunął
-        private REALDATACALLBACK RealData2; // Przechowuj delegata, by GC go nie usunął
-        private REALDATACALLBACK RealData3; // Przechowuj delegata, by GC go nie usunął
-        private REALDATACALLBACK RealDataThermoVision; // Przechowuj delegata, by GC go nie usunął
+        private CHCNetSDK.CHCNet.REALDATACALLBACK RealData1; // Przechowuj delegata, by GC go nie usunął
+        private CHCNetSDK.CHCNet.REALDATACALLBACK RealData2; // Przechowuj delegata, by GC go nie usunął
+        private CHCNetSDK.CHCNet.REALDATACALLBACK RealData3; // Przechowuj delegata, by GC go nie usunął
+        private CHCNetSDK.CHCNet.REALDATACALLBACK RealDataThermoVision; // Przechowuj delegata, by GC go nie usunął
 
         private DECCBFUN m_DecCallback1; // Przechowuj delegata callbacku dekodowania
         private DECCBFUN m_DecCallback2; // Przechowuj delegata callbacku dekodowania
@@ -74,10 +74,18 @@ namespace Camera_WPF_HCNetSDK
         private byte[] rawBuffer3;
         private byte[] rawBufferThermo;
 
+        //public delegate void MSGExceptionCallBack(uint dwType, int lUserID, int lHandle, IntPtr pUser);
+        //private CHCNetSDK.CHCNet.EXCEPYIONCALLBACK m_ExceptionCB = null;
         public MainWindow()
         {
             InitializeComponent();
-            NET_DVR_Init();
+            System.Console.WriteLine("Log: Start Aplikacji " + DateTime.Now);
+            CHCNetSDK.CHCNet.NET_DVR_Init();
+
+            //m_ExceptionCB = new CHCNetSDK.CHCNet.EXCEPYIONCALLBACK(ExceptionCallBackDetails);
+            //CHCNetSDK.CHCNet.NET_DVR_SetExceptionCallBack_V30(0, IntPtr.Zero, m_ExceptionCB, IntPtr.Zero);
+            //CHCNetSDK.CHCNet.NET_DVR_SetConnectTime(5000, 1);
+            //CHCNetSDK.CHCNet.NET_DVR_SetReconnect(5000, 1);
 
             this.StateChanged += MainWindow_StateChanged;
 
@@ -89,24 +97,130 @@ namespace Camera_WPF_HCNetSDK
             string DVRUserName = "admin";
             string DVRPassword = "1qaz2wsx";
 
-            NET_DVR_DEVICEINFO_V30 DeviceInfo1 = new NET_DVR_DEVICEINFO_V30();
-            NET_DVR_DEVICEINFO_V30 DeviceInfo2 = new NET_DVR_DEVICEINFO_V30();
-            NET_DVR_DEVICEINFO_V30 DeviceInfo3 = new NET_DVR_DEVICEINFO_V30();
+            CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30 DeviceInfo1 = new CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30();
+            CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30 DeviceInfo2 = new CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30();
+            CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30 DeviceInfo3 = new CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30();
 
-            user_id_1 = NET_DVR_Login_V30(DVRIPAddress1, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo1);
-            user_id_2 = NET_DVR_Login_V30(DVRIPAddress2, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo2);
-            user_id_3 = NET_DVR_Login_V30(DVRIPAddress3, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo3);
+            user_id_1 = CHCNetSDK.CHCNet.NET_DVR_Login_V30(DVRIPAddress1, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo1);
+            user_id_2 = CHCNetSDK.CHCNet.NET_DVR_Login_V30(DVRIPAddress2, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo2);
+            user_id_3 = CHCNetSDK.CHCNet.NET_DVR_Login_V30(DVRIPAddress3, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo3);
 
-            RealData1 = new REALDATACALLBACK(RealDataCallback1);
-            RealData2 = new REALDATACALLBACK(RealDataCallback2);
-            RealData3 = new REALDATACALLBACK(RealDataCallback3);
-            RealDataThermoVision = new REALDATACALLBACK(RealDataCallbackThermoVision);
+
+            Task.Run(() =>
+            {
+                // Praca w tle
+                System.Diagnostics.Debug.WriteLine($"Uruchomienie wątku");
+                CameraPresenceControl(user_id_1, "Kamera Lewa");
+            });
+
+            RealData1 = new CHCNetSDK.CHCNet.REALDATACALLBACK(RealDataCallback1);
+            RealData2 = new CHCNetSDK.CHCNet.REALDATACALLBACK(RealDataCallback2);
+            RealData3 = new CHCNetSDK.CHCNet.REALDATACALLBACK(RealDataCallback3);
+            RealDataThermoVision = new CHCNetSDK.CHCNet.REALDATACALLBACK(RealDataCallbackThermoVision);
 
             m_DecCallback1 = new DECCBFUN(DecCallback1);
             m_DecCallback2 = new DECCBFUN(DecCallback2);
             m_DecCallback3 = new DECCBFUN(DecCallback3);
             m_DecCallbackThermoVision = new DECCBFUN(DecCallbackThermoVision);
         }
+
+        private async void CameraPresenceControl(int userId, string cameraName)
+        {
+            while (true)
+            {
+                // Próba pobrania statusu (lekkie zapytanie)
+                System.Diagnostics.Debug.WriteLine($"Wątek {userId} {cameraName} RUN " + DateTime.Now);
+                bool isAlive = CheckCameraStatus(userId);
+
+                if (!isAlive)
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        // Reakcja natychmiastowa!
+                        System.Diagnostics.Debug.WriteLine($"Kamera {userId} {cameraName} rozłączona! " + DateTime.Now);
+                    });
+                }
+                else
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        // Reakcja natychmiastowa!
+                        System.Diagnostics.Debug.WriteLine($"Kamera {userId} {cameraName} podłączona!");
+                    });
+                }
+
+                await Task.Delay(10000); // Sprawdzaj co 1 sekundę
+            }
+        }
+
+        private bool CheckCameraStatus(int userId)
+        {
+            // Wywołujemy dowolną prostą funkcję informacyjną
+            CHCNetSDK.CHCNet.NET_DVR_TIME time = new CHCNetSDK.CHCNet.NET_DVR_TIME();
+            uint dwReturn = 0;
+            int nSize = Marshal.SizeOf(time);
+            IntPtr lpOutBuffer = Marshal.AllocHGlobal(nSize);
+            IntPtr lpInBuffer = Marshal.AllocHGlobal(nSize);
+            IntPtr lpStatusList = Marshal.AllocHGlobal(nSize);
+
+            // Próba pobrania czasu kamery - jeśli zwróci false, kamera nie odpowiada
+            //            bool result = CHCNetSDK.CHCNet.NET_DVR_GetConfig(userId, CHCNetSDK.NET_DVR_GET_TIMECFG, 1, lpOutBuffer, (uint)nSize, ref dwReturn);
+            bool result = CHCNetSDK.CHCNet.NET_DVR_GetDeviceConfig(userId, CHCNetSDK.CHCNet.NET_DVR_GET_TIMECFG, 1, lpInBuffer, (uint)nSize, lpStatusList, lpOutBuffer, (uint)nSize);
+
+            Marshal.FreeHGlobal(lpOutBuffer);
+            Marshal.FreeHGlobal(lpInBuffer);
+            Marshal.FreeHGlobal(lpStatusList);
+            return result;
+        }
+
+        //private void ExceptionCallBackDetails(uint dwType, int lUserID, int lHandle, IntPtr pUser)
+        //{
+        //    if(lUserID == user_id_1)
+        //    {
+        //        switch (dwType)
+        //        {
+        //            case CHCNetSDK.CHCNet.EXCEPTION_RECONNECT: // Kamera się rozłączyła i próbuje nawiązać połączenie
+        //                System.Diagnostics.Debug.WriteLine("Log1: Kamera Rozłączona - " + DateTime.Now);
+        //                break;
+        //            case CHCNetSDK.CHCNet.EXCEPTION_ALARMRECONNECT: // Połączenie przywrócone
+        //                System.Diagnostics.Debug.WriteLine("Log1: Kamera Podłączona - " + DateTime.Now);
+        //                break;
+        //            default:
+        //                System.Diagnostics.Debug.WriteLine("Log1: Iny Błąd - " + DateTime.Now);
+        //                break;
+        //        }
+        //    }
+        //    if (lUserID == user_id_2)
+        //    {
+        //        switch (dwType)
+        //        {
+        //            case CHCNetSDK.CHCNet.EXCEPTION_RECONNECT: // Kamera się rozłączyła i próbuje nawiązać połączenie
+        //                System.Diagnostics.Debug.WriteLine("Log2: Kamera Rozłączona - " + DateTime.Now);
+        //                break;
+        //            case CHCNetSDK.CHCNet.EXCEPTION_ALARMRECONNECT: // Połączenie przywrócone
+        //                System.Diagnostics.Debug.WriteLine("Log2: Kamera Podłączona - " + DateTime.Now);
+        //                break;
+        //            default:
+        //                System.Diagnostics.Debug.WriteLine("Log2: Iny Błąd - " + DateTime.Now);
+        //                break;
+        //        }
+        //    }
+        //    if (lUserID == user_id_3)
+        //    {
+        //        switch (dwType)
+        //        {
+        //            case CHCNetSDK.CHCNet.EXCEPTION_RECONNECT: // Kamera się rozłączyła i próbuje nawiązać połączenie
+        //                System.Diagnostics.Debug.WriteLine("Log3: Kamera Rozłączona - " + DateTime.Now);
+        //                break;
+        //            case CHCNetSDK.CHCNet.EXCEPTION_ALARMRECONNECT: // Połączenie przywrócone
+        //                System.Diagnostics.Debug.WriteLine("Log3: Kamera Podłączona - " + DateTime.Now);
+        //                break;
+        //            default:
+        //                System.Diagnostics.Debug.WriteLine("Log3: Iny Błąd - " + DateTime.Now);
+        //                break;
+        //        }
+        //    }
+        //}
 
         private void MainWindow_StateChanged(object sender, EventArgs e)
         {
@@ -124,20 +238,20 @@ namespace Camera_WPF_HCNetSDK
         {
             if (state_playing)
             {
-                bool wynik_5 = PlayM4_Stop(m_Port_Center_Camera_ThermoVision);
-                bool wynik_6 = PlayM4_Stop(m_Port_Center_Camera);
-                bool wynik_7 = PlayM4_Stop(m_Port_Left_Camera);
-                bool wynik_8 = PlayM4_Stop(m_Port_Right_Camera);
+                PlayM4_Stop(m_Port_Center_Camera_ThermoVision);
+                PlayM4_Stop(m_Port_Center_Camera);
+                PlayM4_Stop(m_Port_Left_Camera);
+                PlayM4_Stop(m_Port_Right_Camera);
 
-                bool wynik_1 = PlayM4_CloseStream(m_Port_Center_Camera_ThermoVision);
-                bool wynik_2 = PlayM4_CloseStream(m_Port_Center_Camera);
-                bool wynik_3 = PlayM4_CloseStream(m_Port_Left_Camera);
-                bool wynik_4 = PlayM4_CloseStream(m_Port_Right_Camera);
+                PlayM4_CloseStream(m_Port_Center_Camera_ThermoVision);
+                PlayM4_CloseStream(m_Port_Center_Camera);
+                PlayM4_CloseStream(m_Port_Left_Camera);
+                PlayM4_CloseStream(m_Port_Right_Camera);
 
-                bool wynik_9 = NET_DVR_StopRealPlay(play_handle_thermovision);
-                bool wynik_10 = NET_DVR_StopRealPlay(play_handle_Central);
-                bool wynik_11 = NET_DVR_StopRealPlay(play_handleLeft);
-                bool wynik_12 = NET_DVR_StopRealPlay(play_handleRigth);
+                CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_thermovision);
+                CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_Central);
+                CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handleLeft);
+                CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handleRigth);
 
                 state_playing = false;
                 ButtonStart.Content = "Start";
@@ -148,7 +262,7 @@ namespace Camera_WPF_HCNetSDK
                 ButtonStart.Content = "Stop";
                 ButtonStart.Background = System.Windows.Media.Brushes.Red;
 
-                NET_DVR_PREVIEWINFO lpPreviewInfo1 = new NET_DVR_PREVIEWINFO() // Kamera centralna
+                CHCNetSDK.CHCNet.NET_DVR_PREVIEWINFO lpPreviewInfo1 = new CHCNetSDK.CHCNet.NET_DVR_PREVIEWINFO() // Kamera centralna
                 {
                     hPlayWnd = IntPtr.Zero,
                     lChannel = Int16.Parse("1"),
@@ -160,7 +274,7 @@ namespace Camera_WPF_HCNetSDK
                     byPreviewMode = 0
                 };
 
-                NET_DVR_PREVIEWINFO lpPreviewInfo2 = new NET_DVR_PREVIEWINFO() // Kamera lewa
+                CHCNetSDK.CHCNet.NET_DVR_PREVIEWINFO lpPreviewInfo2 = new CHCNetSDK.CHCNet.NET_DVR_PREVIEWINFO() // Kamera lewa
                 {
                     hPlayWnd = IntPtr.Zero,
                     lChannel = Int16.Parse("1"),
@@ -172,7 +286,7 @@ namespace Camera_WPF_HCNetSDK
                     byPreviewMode = 0
                 };
 
-                NET_DVR_PREVIEWINFO lpPreviewInfo3 = new NET_DVR_PREVIEWINFO() // Kamera prawa
+                CHCNetSDK.CHCNet.NET_DVR_PREVIEWINFO lpPreviewInfo3 = new CHCNetSDK.CHCNet.NET_DVR_PREVIEWINFO() // Kamera prawa
                 {
                     hPlayWnd = IntPtr.Zero,
                     lChannel = Int16.Parse("1"),
@@ -184,7 +298,7 @@ namespace Camera_WPF_HCNetSDK
                     byPreviewMode = 0
                 };
 
-                NET_DVR_PREVIEWINFO lpPreviewInfoThermoVision = new NET_DVR_PREVIEWINFO() // Kamera centralna - termowizja
+                CHCNetSDK.CHCNet.NET_DVR_PREVIEWINFO lpPreviewInfoThermoVision = new CHCNetSDK.CHCNet.NET_DVR_PREVIEWINFO() // Kamera centralna - termowizja
                 {
                     hPlayWnd = IntPtr.Zero,
                     lChannel = Int16.Parse("2"),
@@ -196,10 +310,10 @@ namespace Camera_WPF_HCNetSDK
                     byPreviewMode = 0
                 };
 
-                play_handle_thermovision = NET_DVR_RealPlay_V40(user_id_1, ref lpPreviewInfoThermoVision, RealDataThermoVision, pUserThermoVision);
-                play_handle_Central = NET_DVR_RealPlay_V40(user_id_1, ref lpPreviewInfo1, RealData1, pUser1);
-                play_handleLeft = NET_DVR_RealPlay_V40(user_id_2, ref lpPreviewInfo2, RealData2, pUser2);
-                play_handleRigth = NET_DVR_RealPlay_V40(user_id_3, ref lpPreviewInfo3, RealData3, pUser3);
+                play_handle_thermovision = CHCNetSDK.CHCNet.NET_DVR_RealPlay_V40(user_id_1, ref lpPreviewInfoThermoVision, RealDataThermoVision, pUserThermoVision);
+                play_handle_Central = CHCNetSDK.CHCNet.NET_DVR_RealPlay_V40(user_id_1, ref lpPreviewInfo1, RealData1, pUser1);
+                play_handleLeft = CHCNetSDK.CHCNet.NET_DVR_RealPlay_V40(user_id_2, ref lpPreviewInfo2, RealData2, pUser2);
+                play_handleRigth = CHCNetSDK.CHCNet.NET_DVR_RealPlay_V40(user_id_3, ref lpPreviewInfo3, RealData3, pUser3);
 
                 // Rozpoczęcie podglądu
                 MainCamera.Source = wbmpThermoVision;
@@ -215,7 +329,7 @@ namespace Camera_WPF_HCNetSDK
         {
             switch (dwDataType)
             {
-                case NET_DVR_SYSHEAD:
+                case CHCNetSDK.CHCNet.NET_DVR_SYSHEAD:
                     if (!PlayM4_GetPort(ref m_Port_Center_Camera)) 
                         return;
 
@@ -237,10 +351,10 @@ namespace Camera_WPF_HCNetSDK
                     }
                     break;
 
-                case NET_DVR_STREAMDATA: // Dane wideo
+                case CHCNetSDK.CHCNet.NET_DVR_STREAMDATA: // Dane wideo
                     if (m_Port_Center_Camera != -1 && dwBufSize > 0)
                     {
-                        Console.WriteLine("RealDataCallback1 - STREAMDATA");
+                        //Console.WriteLine("RealDataCallback1 - STREAMDATA");
                         try
                         {
                             PlayM4_InputData(m_Port_Center_Camera, pBuffer, dwBufSize);
@@ -257,7 +371,7 @@ namespace Camera_WPF_HCNetSDK
         {
             switch (dwDataType)
             {
-                case NET_DVR_SYSHEAD:
+                case CHCNetSDK.CHCNet.NET_DVR_SYSHEAD:
                     if (!PlayM4_GetPort(ref m_Port_Left_Camera)) 
                         return;
 
@@ -279,10 +393,10 @@ namespace Camera_WPF_HCNetSDK
                     }
                     break;
 
-                case NET_DVR_STREAMDATA: // Dane wideo
+                case CHCNetSDK.CHCNet.NET_DVR_STREAMDATA: // Dane wideo
                     if (m_Port_Left_Camera != -1 && dwBufSize > 0)
                     {
-                        Console.WriteLine("RealDataCallback2 - STREAMDATA");
+                        //Console.WriteLine("RealDataCallback2 - STREAMDATA");
                         try
                         {
                             PlayM4_InputData(m_Port_Left_Camera, pBuffer, dwBufSize);
@@ -299,7 +413,7 @@ namespace Camera_WPF_HCNetSDK
         {
             switch (dwDataType)
             {
-                case NET_DVR_SYSHEAD:
+                case CHCNetSDK.CHCNet.NET_DVR_SYSHEAD:
                     if (!PlayM4_GetPort(ref m_Port_Right_Camera)) 
                         return;
 
@@ -321,10 +435,10 @@ namespace Camera_WPF_HCNetSDK
                     }
                     break;
 
-                case NET_DVR_STREAMDATA: // Dane wideo
+                case CHCNetSDK.CHCNet.NET_DVR_STREAMDATA: // Dane wideo
                     if (m_Port_Right_Camera != -1 && dwBufSize > 0)
                     {
-                        Console.WriteLine("RealDataCallback3 - STREAMDATA");
+                        //Console.WriteLine("RealDataCallback3 - STREAMDATA");
                         try
                         {
                             PlayM4_InputData(m_Port_Right_Camera, pBuffer, dwBufSize);
@@ -341,7 +455,7 @@ namespace Camera_WPF_HCNetSDK
         {
             switch (dwDataType)
             {
-                case NET_DVR_SYSHEAD:
+                case CHCNetSDK.CHCNet.NET_DVR_SYSHEAD:
                     if (!PlayM4_GetPort(ref m_Port_Center_Camera_ThermoVision)) return;
 
                     if (dwBufSize > 0)
@@ -362,14 +476,14 @@ namespace Camera_WPF_HCNetSDK
                     }
                     break;
 
-                case NET_DVR_STREAMDATA: // Dane wideo
+                case CHCNetSDK.CHCNet.NET_DVR_STREAMDATA: // Dane wideo
                     if (m_Port_Center_Camera_ThermoVision != -1 && dwBufSize > 0)
                     {
-                        Console.WriteLine("RealDataCallbackThermoVision - STREAMDATA");
+                        //Console.WriteLine("RealDataCallbackThermoVision - STREAMDATA");
                         try
                         {
                             PlayM4_InputData(m_Port_Center_Camera_ThermoVision, pBuffer, dwBufSize);
-                            Console.WriteLine("RealDataCallbackThermoVision - PlayM4_InputData");
+                            //Console.WriteLine("RealDataCallbackThermoVision - PlayM4_InputData");
                         }
                         catch (Exception ex)
                         {
@@ -404,7 +518,7 @@ namespace Camera_WPF_HCNetSDK
                     // Kopiujemy już gotowe dane RGB do naszej bitmapy WPF
                     ConvertYV12ToRGB(rawBuffer1, wbmp1.BackBuffer, width, height);
                     wbmp1.AddDirtyRect(new Int32Rect(0, 0, width, height));
-                    Console.WriteLine("DecCallback1");
+                    //Console.WriteLine("DecCallback1");
                 }
                 catch (Exception ex)
                 {
@@ -440,7 +554,7 @@ namespace Camera_WPF_HCNetSDK
                     // Kopiujemy już gotowe dane RGB do naszej bitmapy WPF
                     ConvertYV12ToRGB(rawBuffer2, wbmp2.BackBuffer, width, height);
                     wbmp2.AddDirtyRect(new Int32Rect(0, 0, width, height));
-                    Console.WriteLine("DecCallback2");
+                    //Console.WriteLine("DecCallback2");
                 }
                 catch (Exception ex)
                 {
@@ -476,7 +590,7 @@ namespace Camera_WPF_HCNetSDK
                     // Kopiujemy już gotowe dane RGB do naszej bitmapy WPF
                     ConvertYV12ToRGB(rawBuffer3, wbmp3.BackBuffer, width, height);
                     wbmp3.AddDirtyRect(new Int32Rect(0, 0, width, height));
-                    Console.WriteLine("DecCallback3");
+                    //Console.WriteLine("DecCallback3");
                 }
                 catch (Exception ex)
                 {
@@ -518,7 +632,7 @@ namespace Camera_WPF_HCNetSDK
                     // Kopiujemy już gotowe dane RGB do naszej bitmapy WPF
                     ConvertYV12ToRGB(rawBufferThermo, wbmpThermoVision.BackBuffer, width, height);
                     wbmpThermoVision.AddDirtyRect(new Int32Rect(0, 0, width, height));
-                    Console.WriteLine("DecCallbackTV");
+                    //Console.WriteLine("DecCallbackTV");
                 }
                 catch (Exception ex)
                 {
@@ -526,7 +640,7 @@ namespace Camera_WPF_HCNetSDK
                 }
                 finally
                 {
-                    Console.WriteLine("DecCallbackTV Unlock");
+                    //Console.WriteLine("DecCallbackTV Unlock");
                     wbmpThermoVision.Unlock();
                 }
             }));
@@ -584,26 +698,26 @@ namespace Camera_WPF_HCNetSDK
         // Zamykanie okna
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
-            bool wynik_5 = PlayM4_Stop(m_Port_Center_Camera_ThermoVision);
-            bool wynik_6 = PlayM4_Stop(m_Port_Center_Camera);
-            bool wynik_7 = PlayM4_Stop(m_Port_Left_Camera);
-            bool wynik_8 = PlayM4_Stop(m_Port_Right_Camera);
+            PlayM4_Stop(m_Port_Center_Camera_ThermoVision);
+            PlayM4_Stop(m_Port_Center_Camera);
+            PlayM4_Stop(m_Port_Left_Camera);
+            PlayM4_Stop(m_Port_Right_Camera);
 
-            bool wynik_1 = PlayM4_CloseStream(m_Port_Center_Camera_ThermoVision);
-            bool wynik_2 = PlayM4_CloseStream(m_Port_Center_Camera);
-            bool wynik_3 = PlayM4_CloseStream(m_Port_Left_Camera);
-            bool wynik_4 = PlayM4_CloseStream(m_Port_Right_Camera);
+            PlayM4_CloseStream(m_Port_Center_Camera_ThermoVision);
+            PlayM4_CloseStream(m_Port_Center_Camera);
+            PlayM4_CloseStream(m_Port_Left_Camera);
+            PlayM4_CloseStream(m_Port_Right_Camera);
 
-            bool wynik_9 = NET_DVR_StopRealPlay(m_Port_Center_Camera_ThermoVision);
-            bool wynik_10 = NET_DVR_StopRealPlay(play_handle_Central);
-            bool wynik_11 = NET_DVR_StopRealPlay(play_handleLeft);
-            bool wynik_12 = NET_DVR_StopRealPlay(play_handleRigth);
+            CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(m_Port_Center_Camera_ThermoVision);
+            CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_Central);
+            CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handleLeft);
+            CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handleRigth);
 
-            NET_DVR_Logout(user_id_1);
-            NET_DVR_Logout(user_id_2);
-            NET_DVR_Logout(user_id_3);
-            
-            NET_DVR_Cleanup();
+            CHCNetSDK.CHCNet.NET_DVR_Logout(user_id_1);
+            CHCNetSDK.CHCNet.NET_DVR_Logout(user_id_2);
+            CHCNetSDK.CHCNet.NET_DVR_Logout(user_id_3);
+
+            CHCNetSDK.CHCNet.NET_DVR_Cleanup();
             
             this.Close();
         }
