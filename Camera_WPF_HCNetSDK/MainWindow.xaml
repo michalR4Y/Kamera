@@ -9,9 +9,9 @@
         AllowsTransparency="True"
         Title="MainWindow" Height="700" Width="1190"
         Background="Black">
-        
+
     <Grid>
-        
+
         <Grid.RowDefinitions>
             <RowDefinition Height="30"/>
             <RowDefinition Height="150*"/>
@@ -98,9 +98,23 @@
             <Grid Margin="2,2,2,2" Grid.Column="0">
                 <Image 
                     x:Name="LeftCameraSmall" 
-                    HorizontalAlignment="Left" 
+                    HorizontalAlignment="Center" 
                     MouseLeftButtonDown="Image_LeftCameraMouseLeftButtonDown" 
                     Cursor="Hand"/>
+                <TextBlock 
+                    x:Name="LeftCameraError"
+                    Text="Error" 
+                    Height="85" 
+                    FontSize="60" 
+                    Foreground="Red" 
+                    Visibility="Collapsed" 
+                    VerticalAlignment="Top" 
+                    Margin="138,17,125,0" 
+                    RenderTransformOrigin="0.476,0.504" >
+                    <TextBlock.LayoutTransform>
+                        <RotateTransform Angle="-20" />
+                    </TextBlock.LayoutTransform>
+                </TextBlock>
             </Grid>
             <Grid Margin="2,2,2,2" Grid.Column="1">
                 <Image 
