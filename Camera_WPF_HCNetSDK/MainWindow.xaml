@@ -9,7 +9,6 @@
         AllowsTransparency="True"
         Title="MainWindow" Height="700" Width="1190"
         Background="Black">
-
     <Grid>
 
         <Grid.RowDefinitions>
@@ -106,7 +105,8 @@
                     Text="L Error" 
                     Height="85" 
                     FontSize="60" 
-                    Foreground="Red" 
+                    Foreground="Red"
+                    Visibility="Collapsed"
                     VerticalAlignment="Top" 
                     Margin="55,17,125,0" 
                     RenderTransformOrigin="0.476,0.504" >
@@ -127,6 +127,7 @@
                     Height="85" 
                     FontSize="60" 
                     Foreground="Red" 
+                    Visibility="Collapsed"
                     VerticalAlignment="Top" 
                     Margin="55,17,125,0" 
                     RenderTransformOrigin="0.476,0.504" >
@@ -147,6 +148,7 @@
                     Height="85" 
                     FontSize="60" 
                     Foreground="Red" 
+                    Visibility="Collapsed"
                     VerticalAlignment="Top" 
                     Margin="53,17,125,0" 
                     RenderTransformOrigin="0.476,0.504" >
@@ -190,6 +192,10 @@
             <Image Margin="5,5,5,5" Grid.Column="5" Source="Icons/SztucznyHoryzont.png" HorizontalAlignment="Left" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
 
             <Button x:Name="ButtonStart" Grid.Column="10" FontSize="30" Content="Start" Click="ButtonStart_Click" Background="Green"/>
+            <TextBlock x:Name="StatusLabel" Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Center" TextWrapping="Wrap" Text="Szukanie kontrolera..." TextAlignment="Center" FontSize="20" Foreground="Orange" Height="80" Width="163"/>
+            <TextBox x:Name="TextBoxToRead" Grid.Column="7" HorizontalAlignment="Center" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="144" MaxLength="20" Margin="0,5,0,0"/>
+            <TextBox x:Name="TextBoxToSend" Grid.Column="7" HorizontalAlignment="Center" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="144" MaxLength="20" Margin="0,32,0,0"/>
+            <Button x:Name="SendButton" Grid.Column="7" Content="SEND" HorizontalAlignment="Center" Margin="0,64,0,0" VerticalAlignment="Top" Width="144" Height="26" Click="SendButton_Click"/>
         </Grid>
 
     </Grid>

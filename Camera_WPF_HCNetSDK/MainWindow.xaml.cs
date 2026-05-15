@@ -1,4 +1,5 @@
 ﻿using CHCNetSDK;
+using SharpDX.DirectInput;
 using System;
 using System.Collections.Generic;
 using System.Drawing;             // Podstawowa obsługa Bitmap
@@ -6,23 +7,25 @@ using System.Drawing.Imaging;     // Obsługa formatów pikseli (np. Format24bpp
 using System.Linq;
 using System.Runtime.InteropServices; // Do pracy z pamięcią (Marshal, IntPtr)
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Media.Media3D;
+//using System.Windows.Media.Media3D;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using static CHCNetSDK.CHCNet;
-
-
 //using static CHCNetSDK.CHCNet;
 using static CHCNetSDK.PlayCtrl;
 using static System.Diagnostics.Debug;
+using System.Net;
+using System.Net.Sockets;
 
 namespace Camera_WPF_HCNetSDK
 {
@@ -69,35 +72,41 @@ namespace Camera_WPF_HCNetSDK
         WriteableBitmap CentralCameraWBMP = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);  // Kamera centralna
         WriteableBitmap LeftCameraWBMP = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);  // Kamera Lewa
         WriteableBitmap RigthCameraWBMP = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);  // Kamera Prawa
-        WriteableBitmap wbmpThermoVision = new WriteableBitmap(1280, 720, 96, 96, PixelFormats.Bgr24, null);    // Termowizja
+        WriteableBitmap ThermoVisionWBMP = new WriteableBitmap(1280, 720, 96, 96, PixelFormats.Bgr24, null);    // Termowizja
 
         private byte[] rawBuffer1;
         private byte[] rawBuffer2;
         private byte[] rawBuffer3;
         private byte[] rawBufferThermo;
 
+        private DirectInput directInput;
+        private Joystick joystick;
+        private CancellationTokenSource cts;
+
+        private bool isListening = true;
+
         //public delegate void MSGExceptionCallBack(uint dwType, int lUserID, int lHandle, IntPtr pUser);
         //private CHCNetSDK.CHCNet.EXCEPYIONCALLBACK m_ExceptionCB = null;
         public MainWindow()
         {
             InitializeComponent();
-            System.Console.WriteLine("Log: Start Aplikacji " + DateTime.Now);
             CHCNetSDK.CHCNet.NET_DVR_Init();
+            // Uruchomienie po załadowaniu okna
+            this.Loaded += (s, e) => StartJoystickService();
+            // Bezpieczne zamknięcie przy wyjściu
+            this.Closing += (s, e) => StopJoystickService();
 
-            //m_ExceptionCB = new CHCNetSDK.CHCNet.EXCEPYIONCALLBACK(ExceptionCallBackDetails);
-            //CHCNetSDK.CHCNet.NET_DVR_SetExceptionCallBack_V30(0, IntPtr.Zero, m_ExceptionCB, IntPtr.Zero);
-            //CHCNetSDK.CHCNet.NET_DVR_SetConnectTime(5000, 1);
-            //CHCNetSDK.CHCNet.NET_DVR_SetReconnect(5000, 1);
+            Task.Run(() => StartTcpServer()); // Uruchomienie w tle
 
             this.StateChanged += MainWindow_StateChanged;
 
             string DVRIPAddressCentralCamera = "192.168.1.64";
-            string DVRIPAddressLeftCamera    = "192.168.1.65";
-            string DVRIPAddressRigthCamera   = "192.168.1.66";
+            string DVRIPAddressLeftCamera = "192.168.1.65";
+            string DVRIPAddressRigthCamera = "192.168.1.66";
 
             Int16 DVRPortNumber = Int16.Parse("8000");
-            string DVRUserName  = "admin";
-            string DVRPassword  = "1qaz2wsx";
+            string DVRUserName = "admin";
+            string DVRPassword = "1qaz2wsx";
 
             CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30 CentralCameraInfo = new CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30();
             CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30 LeftCameraInfo = new CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30();
@@ -116,6 +125,44 @@ namespace Camera_WPF_HCNetSDK
             m_DecLeftCameraCallback = new DECCBFUN(DecLeftCameraCallback);
             m_DecRigthCameraCallback = new DECCBFUN(DecRigthCameraCallback);
             m_DecCallbackThermoVision = new DECCBFUN(DecCallbackThermoVision);
+        }
+
+        private void StartTcpServer()
+        {
+            TcpListener server = null;
+            try
+            {
+                string ipAddressString = "192.168.1.105"; // Konkretny adres IP
+                int port = 13000;
+                IPAddress localAddr = IPAddress.Parse(ipAddressString);
+                IPEndPoint localEndPoint = new IPEndPoint(localAddr, port);
+                server = new TcpListener(localAddr, port);
+                server.Start();
+
+                byte[] bytes = new byte[1024];
+                string data = null;
+
+                while (isListening)
+                {
+                    using (TcpClient client = server.AcceptTcpClient())
+                    using (NetworkStream stream = client.GetStream())
+                    {
+                        int i;
+                        while ((i = stream.Read(bytes, 0, bytes.Length)) != 0)
+                        {
+                            data = Encoding.ASCII.GetString(bytes, 0, i);
+
+                            // Aktualizacja UI w WPF musi być w Dispatcher
+                            Dispatcher.Invoke(() =>
+                            {
+                                TextBoxToRead.Text = $"Odebrano: {data}";
+                            });
+                        }
+                    }
+                }
+            }
+            catch (SocketException) { /* Obsługa błędu */ }
+            finally { server?.Stop(); }
         }
 
         private async void CameraPresenceControl(int cameraId, string cameraName)
@@ -140,7 +187,6 @@ namespace Camera_WPF_HCNetSDK
                         Application.Current.Dispatcher.BeginInvoke(new Action(() =>
                         {
                             RightCameraError.Visibility = Visibility.Hidden;
-                            RightCameraSmall.Visibility = Visibility.Visible;
                         }));
                     }
                     else
@@ -149,7 +195,6 @@ namespace Camera_WPF_HCNetSDK
                         Application.Current.Dispatcher.BeginInvoke(new Action(() =>
                         {
                             RightCameraError.Visibility = Visibility.Visible;
-                            RightCameraSmall.Visibility = Visibility.Hidden;
                         }));
                     }
                 }
@@ -246,6 +291,11 @@ namespace Camera_WPF_HCNetSDK
                 CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handleLeft);
                 CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handleRigth);
 
+                MainCamera.Visibility = Visibility.Collapsed;
+                CentralCameraSmall.Visibility = Visibility.Collapsed;
+                RightCameraSmall.Visibility = Visibility.Collapsed;
+                LeftCameraSmall.Visibility = Visibility.Collapsed;
+
                 state_playing = false;
                 ButtonStart.Content = "Start";
                 ButtonStart.Background = System.Windows.Media.Brushes.Green;
@@ -309,10 +359,15 @@ namespace Camera_WPF_HCNetSDK
                 play_handleRigth = CHCNetSDK.CHCNet.NET_DVR_RealPlay_V40(RigthCamera_Id, ref lpPreviewInfo3, RealDataRigthCamera, pUser3);
 
                 // Rozpoczęcie podglądu
-                MainCamera.Source = wbmpThermoVision;
+                MainCamera.Source = ThermoVisionWBMP;
                 CentralCameraSmall.Source = CentralCameraWBMP;
                 RightCameraSmall.Source = RigthCameraWBMP;
                 LeftCameraSmall.Source = LeftCameraWBMP;
+
+                MainCamera.Visibility = Visibility.Visible;
+                CentralCameraSmall.Visibility = Visibility.Visible;
+                RightCameraSmall.Visibility = Visibility.Visible;
+                LeftCameraSmall.Visibility = Visibility.Visible;
 
                 Task.Run(() =>
                 {
@@ -339,7 +394,7 @@ namespace Camera_WPF_HCNetSDK
             switch (dwDataType)
             {
                 case CHCNetSDK.CHCNet.NET_DVR_SYSHEAD:
-                    if (!PlayM4_GetPort(ref m_Port_Center_Camera)) 
+                    if (!PlayM4_GetPort(ref m_Port_Center_Camera))
                         return;
 
                     if (dwBufSize > 0)
@@ -381,7 +436,7 @@ namespace Camera_WPF_HCNetSDK
             switch (dwDataType)
             {
                 case CHCNetSDK.CHCNet.NET_DVR_SYSHEAD:
-                    if (!PlayM4_GetPort(ref m_Port_Left_Camera)) 
+                    if (!PlayM4_GetPort(ref m_Port_Left_Camera))
                         return;
 
                     if (dwBufSize > 0)
@@ -423,7 +478,7 @@ namespace Camera_WPF_HCNetSDK
             switch (dwDataType)
             {
                 case CHCNetSDK.CHCNet.NET_DVR_SYSHEAD:
-                    if (!PlayM4_GetPort(ref m_Port_Right_Camera)) 
+                    if (!PlayM4_GetPort(ref m_Port_Right_Camera))
                         return;
 
                     if (dwBufSize > 0)
@@ -629,7 +684,7 @@ namespace Camera_WPF_HCNetSDK
             Marshal.Copy(pBuf, rawBufferThermo, 0, nSize);
             Application.Current.Dispatcher.BeginInvoke(new Action(() =>
             {
-                if (!state_playing || wbmpThermoVision == null)
+                if (!state_playing || ThermoVisionWBMP == null)
                 {
                     Console.WriteLine("DecCallbackTV Return");
                     return;
@@ -637,10 +692,10 @@ namespace Camera_WPF_HCNetSDK
 
                 try
                 {
-                    wbmpThermoVision.Lock();
+                    ThermoVisionWBMP.Lock();
                     // Kopiujemy już gotowe dane RGB do naszej bitmapy WPF
-                    ConvertYV12ToRGB(rawBufferThermo, wbmpThermoVision.BackBuffer, width, height);
-                    wbmpThermoVision.AddDirtyRect(new Int32Rect(0, 0, width, height));
+                    ConvertYV12ToRGB(rawBufferThermo, ThermoVisionWBMP.BackBuffer, width, height);
+                    ThermoVisionWBMP.AddDirtyRect(new Int32Rect(0, 0, width, height));
                     //Console.WriteLine("DecCallbackTV");
                 }
                 catch (Exception ex)
@@ -650,7 +705,7 @@ namespace Camera_WPF_HCNetSDK
                 finally
                 {
                     //Console.WriteLine("DecCallbackTV Unlock");
-                    wbmpThermoVision.Unlock();
+                    ThermoVisionWBMP.Unlock();
                 }
             }));
         }
@@ -727,7 +782,7 @@ namespace Camera_WPF_HCNetSDK
             CHCNetSDK.CHCNet.NET_DVR_Logout(RigthCamera_Id);
 
             CHCNetSDK.CHCNet.NET_DVR_Cleanup();
-            
+
             this.Close();
         }
 
@@ -793,12 +848,12 @@ namespace Camera_WPF_HCNetSDK
             CentralCameraSmall.Visibility = Visibility.Collapsed;
             MainCamera.Visibility = Visibility.Collapsed;
             BigMainCamera.Visibility = Visibility.Visible;
-            BigMainCamera.Source = wbmpThermoVision;
+            BigMainCamera.Source = ThermoVisionWBMP;
         }
         private void Image_BigMainCameraTermovisionMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             // Rozpoczęcie podglądu
-            MainCamera.Source = wbmpThermoVision;
+            MainCamera.Source = ThermoVisionWBMP;
             CentralCameraSmall.Source = CentralCameraWBMP;
             RightCameraSmall.Source = LeftCameraWBMP;
             LeftCameraSmall.Source = RigthCameraWBMP;
@@ -811,6 +866,184 @@ namespace Camera_WPF_HCNetSDK
             BigMainCamera.Visibility = Visibility.Collapsed;
             BigMainCamera.Source = null;
             state_playing = true;
+        }
+
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            HwndSource source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+            source.AddHook(HwndMessageHook);
+
+            RegisterHidNotification(); // To "budzi" system do wysyłania powiadomień
+        }
+
+        private IntPtr HwndMessageHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            const int WM_DEVICECHANGE = 0x0219;
+            const int DBT_DEVICEARRIVAL = 0x8000;       // Podłączono urządzenie
+            const int DBT_DEVICEREMOVECOMPLETE = 0x8004; // Odłączono urządzenie
+
+            if (msg == WM_DEVICECHANGE)
+            {
+                System.Diagnostics.Debug.WriteLine("Wykryto zmianę sprzętową! wParam: " + wParam);
+                int eventCode = wParam.ToInt32();
+                if (eventCode == DBT_DEVICEARRIVAL || eventCode == DBT_DEVICEREMOVECOMPLETE)
+                {
+                    // System wykrył zmianę w USB - restartujemy usługę joysticka
+                    RestartJoystickService();
+                }
+            }
+            return IntPtr.Zero;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct DEV_BROADCAST_DEVICEINTERFACE
+        {
+            public int dbcc_size;
+            public int dbcc_devicetype;
+            public int dbcc_reserved;
+            public Guid dbcc_classguid;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 255)]
+            public string dbcc_name;
+        }
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+
+        static extern IntPtr RegisterDeviceNotification(IntPtr hRecipient, IntPtr NotificationFilter, uint Flags);
+
+        private void RegisterHidNotification()
+        {
+            Guid hidGuid = new Guid("4d1e55b2-f16f-11cf-88cb-001111000030"); // GUID dla urządzeń HID
+            DEV_BROADCAST_DEVICEINTERFACE notificationFilter = new DEV_BROADCAST_DEVICEINTERFACE();
+            notificationFilter.dbcc_size = Marshal.SizeOf(notificationFilter);
+            notificationFilter.dbcc_devicetype = 0x00000005; // DBT_DEVTYP_DEVICEINTERFACE
+            notificationFilter.dbcc_classguid = hidGuid;
+
+            IntPtr buffer = Marshal.AllocHGlobal(notificationFilter.dbcc_size);
+            Marshal.StructureToPtr(notificationFilter, buffer, true);
+
+            RegisterDeviceNotification(new WindowInteropHelper(this).Handle, buffer, 0);
+        }
+
+        private async void RestartJoystickService()
+        {
+            // Dajemy systemowi chwilę na zainstalowanie sterownika po włożeniu wtyczki
+            await Task.Delay(1000);
+
+            StopJoystickService(); // Zatrzymujemy stary wątek i zwalniamy zasoby
+            StartJoystickService(); // Próbujemy zainicjować od nowa
+        }
+
+        private void StartJoystickService()
+        {
+            try
+            {
+                directInput = new DirectInput();
+                var devices = directInput.GetDevices(DeviceType.Joystick, DeviceEnumerationFlags.AllDevices);
+
+                if (devices.Count > 0)
+                {
+                    joystick = new Joystick(directInput, devices[0].InstanceGuid);
+                    joystick.Acquire();
+
+                    cts = new CancellationTokenSource();
+                    Task.Run(() => JoystickLoop(cts.Token));
+
+                    StatusLabel.Text = "Połączono: " + devices[0].InstanceName;
+                    StatusLabel.Foreground = System.Windows.Media.Brushes.Green;
+                }
+                else
+                {
+                    StatusLabel.Text = "Oczekiwanie na joystick USB...";
+                    StatusLabel.Foreground = System.Windows.Media.Brushes.Orange;
+                }
+            }
+            catch (Exception)
+            {
+                StatusLabel.Text = "Błąd inicjalizacji.";
+            }
+        }
+        private void StopJoystickService()
+        {
+            cts?.Cancel();
+            directInput?.Dispose();
+            joystick?.Dispose();
+        }
+        private void JoystickLoop(CancellationToken token)
+        {
+            try
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    // Odpytanie urządzenia
+                    joystick.Poll();
+                    var state = joystick.GetCurrentState();
+
+                    // Przekazanie danych do UI
+                    Dispatcher.Invoke(() => UpdateUI(state));
+                    Thread.Sleep(10);
+                }
+            }
+            catch (SharpDX.SharpDXException)
+            {
+                // Wykryto odłączenie w trakcie pracy
+                Dispatcher.Invoke(() =>
+                {
+                    StatusLabel.Text = "ROZŁĄCZONO!";
+                    StatusLabel.Foreground = System.Windows.Media.Brushes.Red;
+                    ResetUI(); // Metoda zerująca paski ProgressBar
+                });
+            }
+            finally
+            {
+                try 
+                { 
+                    joystick?.Unacquire(); 
+                } 
+                catch 
+                {
+                    StatusLabel.Text = "BŁĄD ROZŁĄCZONO!";
+                }
+            }
+        }
+        private void UpdateUI(JoystickState state)
+        {
+
+        }
+
+        private void ResetUI()
+        {
+
+        }
+
+        private async void SendButton_Click(object sender, RoutedEventArgs e)
+        {
+            string message = "Michał";
+            string ip = "192.168.1.105"; // Adres serwera
+            int port = 13001;
+
+            try
+            {
+                // 1. Inicjalizacja klienta i połączenie
+                using (TcpClient client = new TcpClient())
+                {
+                    await client.ConnectAsync(ip, port);
+
+                    // 2. Pobranie strumienia do wysyłania danych
+                    using (NetworkStream stream = client.GetStream())
+                    {
+                        byte[] dataToSend = Encoding.UTF8.GetBytes(message);
+
+                        // 3. Wysłanie danych
+                        await stream.WriteAsync(dataToSend, 0, dataToSend.Length);
+                        TextBoxToSend.Text = "Wysłano: " + message;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Błąd: {ex.Message}");
+            }
         }
     }
 }
