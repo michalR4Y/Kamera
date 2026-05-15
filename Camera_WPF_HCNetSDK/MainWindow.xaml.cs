@@ -66,9 +66,9 @@ namespace Camera_WPF_HCNetSDK
         private DECCBFUN m_DecRigthCameraCallback; // Przechowuj delegata callbacku dekodowania
         private DECCBFUN m_DecCallbackThermoVision; // Przechowuj delegata callbacku dekodowania
 
-        WriteableBitmap wbmp1 = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);  // Kamera centralna
-        WriteableBitmap wbmp2 = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);  // Kamera Lewa
-        WriteableBitmap wbmp3 = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);  // Kamera Prawa
+        WriteableBitmap CentralCameraWBMP = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);  // Kamera centralna
+        WriteableBitmap LeftCameraWBMP = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);  // Kamera Lewa
+        WriteableBitmap RigthCameraWBMP = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);  // Kamera Prawa
         WriteableBitmap wbmpThermoVision = new WriteableBitmap(1280, 720, 96, 96, PixelFormats.Bgr24, null);    // Termowizja
 
         private byte[] rawBuffer1;
@@ -99,13 +99,13 @@ namespace Camera_WPF_HCNetSDK
             string DVRUserName  = "admin";
             string DVRPassword  = "1qaz2wsx";
 
-            CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30 DeviceInfo1 = new CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30();
-            CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30 DeviceInfo2 = new CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30();
-            CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30 DeviceInfo3 = new CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30();
+            CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30 CentralCameraInfo = new CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30();
+            CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30 LeftCameraInfo = new CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30();
+            CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30 RigthCameraInfo = new CHCNetSDK.CHCNet.NET_DVR_DEVICEINFO_V30();
 
-            CentralCamera_Id = CHCNetSDK.CHCNet.NET_DVR_Login_V30(DVRIPAddressCentralCamera, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo1);
-            LeftCamera_Id = CHCNetSDK.CHCNet.NET_DVR_Login_V30(DVRIPAddressLeftCamera, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo2);
-            RigthCamera_Id = CHCNetSDK.CHCNet.NET_DVR_Login_V30(DVRIPAddressRigthCamera, DVRPortNumber, DVRUserName, DVRPassword, ref DeviceInfo3);
+            CentralCamera_Id = CHCNetSDK.CHCNet.NET_DVR_Login_V30(DVRIPAddressCentralCamera, DVRPortNumber, DVRUserName, DVRPassword, ref CentralCameraInfo);
+            LeftCamera_Id = CHCNetSDK.CHCNet.NET_DVR_Login_V30(DVRIPAddressLeftCamera, DVRPortNumber, DVRUserName, DVRPassword, ref LeftCameraInfo);
+            RigthCamera_Id = CHCNetSDK.CHCNet.NET_DVR_Login_V30(DVRIPAddressRigthCamera, DVRPortNumber, DVRUserName, DVRPassword, ref RigthCameraInfo);
 
             RealDataCentralCamera = new CHCNetSDK.CHCNet.REALDATACALLBACK(RealDataCentralCameraCallback);
             RealDataLeftCamera = new CHCNetSDK.CHCNet.REALDATACALLBACK(RealDataLeftCameraCallback);
@@ -133,6 +133,48 @@ namespace Camera_WPF_HCNetSDK
                 uint errorCode = CHCNetSDK.CHCNet.NET_DVR_GetLastError();
 
                 if (cameraId == RigthCamera_Id)
+                {
+                    if (result)
+                    {
+                        Console.WriteLine(cameraName + ": " + cameraId + " działa");
+                        Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            RightCameraError.Visibility = Visibility.Hidden;
+                            RightCameraSmall.Visibility = Visibility.Visible;
+                        }));
+                    }
+                    else
+                    {
+                        Console.WriteLine(cameraName + ": " + cameraId + " nie działa. Błąd: + " + errorCode);
+                        Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            RightCameraError.Visibility = Visibility.Visible;
+                            RightCameraSmall.Visibility = Visibility.Hidden;
+                        }));
+                    }
+                }
+
+                if (cameraId == CentralCamera_Id)
+                {
+                    if (result)
+                    {
+                        Console.WriteLine(cameraName + ": " + cameraId + " działa");
+                        Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            CentralCameraError.Visibility = Visibility.Hidden;
+                        }));
+                    }
+                    else
+                    {
+                        Console.WriteLine(cameraName + ": " + cameraId + " nie działa. Błąd: + " + errorCode);
+                        Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            CentralCameraError.Visibility = Visibility.Visible;
+                        }));
+                    }
+                }
+
+                if (cameraId == LeftCamera_Id)
                 {
                     if (result)
                     {
@@ -268,9 +310,9 @@ namespace Camera_WPF_HCNetSDK
 
                 // Rozpoczęcie podglądu
                 MainCamera.Source = wbmpThermoVision;
-                CenterCameraSmall.Source = wbmp1;
-                RightCameraSmall.Source = wbmp2;
-                LeftCameraSmall.Source = wbmp3;
+                CentralCameraSmall.Source = CentralCameraWBMP;
+                RightCameraSmall.Source = RigthCameraWBMP;
+                LeftCameraSmall.Source = LeftCameraWBMP;
 
                 Task.Run(() =>
                 {
@@ -476,15 +518,15 @@ namespace Camera_WPF_HCNetSDK
             Marshal.Copy(pBuf, rawBuffer1, 0, nSize);
             Application.Current.Dispatcher.BeginInvoke(new Action(() =>
             {
-                if (!state_playing || wbmp1 == null)
+                if (!state_playing || CentralCameraWBMP == null)
                     return;
 
                 try
                 {
-                    wbmp1.Lock();
+                    CentralCameraWBMP.Lock();
                     // Kopiujemy już gotowe dane RGB do naszej bitmapy WPF
-                    ConvertYV12ToRGB(rawBuffer1, wbmp1.BackBuffer, width, height);
-                    wbmp1.AddDirtyRect(new Int32Rect(0, 0, width, height));
+                    ConvertYV12ToRGB(rawBuffer1, CentralCameraWBMP.BackBuffer, width, height);
+                    CentralCameraWBMP.AddDirtyRect(new Int32Rect(0, 0, width, height));
                     //Console.WriteLine("DecCallback1");
                 }
                 catch (Exception ex)
@@ -493,7 +535,7 @@ namespace Camera_WPF_HCNetSDK
                 }
                 finally
                 {
-                    wbmp1.Unlock();
+                    CentralCameraWBMP.Unlock();
                 }
             }));
         }
@@ -512,15 +554,15 @@ namespace Camera_WPF_HCNetSDK
             Marshal.Copy(pBuf, rawBuffer2, 0, nSize);
             Application.Current.Dispatcher.BeginInvoke(new Action(() =>
             {
-                if (!state_playing || wbmp2 == null)
+                if (!state_playing || LeftCameraWBMP == null)
                     return;
 
                 try
                 {
-                    wbmp2.Lock();
+                    LeftCameraWBMP.Lock();
                     // Kopiujemy już gotowe dane RGB do naszej bitmapy WPF
-                    ConvertYV12ToRGB(rawBuffer2, wbmp2.BackBuffer, width, height);
-                    wbmp2.AddDirtyRect(new Int32Rect(0, 0, width, height));
+                    ConvertYV12ToRGB(rawBuffer2, LeftCameraWBMP.BackBuffer, width, height);
+                    LeftCameraWBMP.AddDirtyRect(new Int32Rect(0, 0, width, height));
                     //Console.WriteLine("DecCallback2");
                 }
                 catch (Exception ex)
@@ -529,7 +571,7 @@ namespace Camera_WPF_HCNetSDK
                 }
                 finally
                 {
-                    wbmp2.Unlock();
+                    LeftCameraWBMP.Unlock();
                 }
             }));
         }
@@ -548,15 +590,15 @@ namespace Camera_WPF_HCNetSDK
             Marshal.Copy(pBuf, rawBuffer3, 0, nSize);
             Application.Current.Dispatcher.BeginInvoke(new Action(() =>
             {
-                if (!state_playing || wbmp3 == null)
+                if (!state_playing || RigthCameraWBMP == null)
                     return;
 
                 try
                 {
-                    wbmp3.Lock();
+                    RigthCameraWBMP.Lock();
                     // Kopiujemy już gotowe dane RGB do naszej bitmapy WPF
-                    ConvertYV12ToRGB(rawBuffer3, wbmp3.BackBuffer, width, height);
-                    wbmp3.AddDirtyRect(new Int32Rect(0, 0, width, height));
+                    ConvertYV12ToRGB(rawBuffer3, RigthCameraWBMP.BackBuffer, width, height);
+                    RigthCameraWBMP.AddDirtyRect(new Int32Rect(0, 0, width, height));
                     //Console.WriteLine("DecCallback3");
                 }
                 catch (Exception ex)
@@ -565,7 +607,7 @@ namespace Camera_WPF_HCNetSDK
                 }
                 finally
                 {
-                    wbmp3.Unlock();
+                    RigthCameraWBMP.Unlock();
                 }
             }));
         }
@@ -721,34 +763,34 @@ namespace Camera_WPF_HCNetSDK
         {
             LeftCameraSmall.Visibility = Visibility.Collapsed;
             RightCameraSmall.Visibility = Visibility.Collapsed;
-            CenterCameraSmall.Visibility = Visibility.Collapsed;
+            CentralCameraSmall.Visibility = Visibility.Collapsed;
             MainCamera.Visibility = Visibility.Collapsed;
             BigMainCamera.Visibility = Visibility.Visible;
-            BigMainCamera.Source = wbmp3;
+            BigMainCamera.Source = RigthCameraWBMP;
         }
         private void Image_RightCameraMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             LeftCameraSmall.Visibility = Visibility.Collapsed;
             RightCameraSmall.Visibility = Visibility.Collapsed;
-            CenterCameraSmall.Visibility = Visibility.Collapsed;
+            CentralCameraSmall.Visibility = Visibility.Collapsed;
             MainCamera.Visibility = Visibility.Collapsed;
             BigMainCamera.Visibility = Visibility.Visible;
-            BigMainCamera.Source = wbmp2;
+            BigMainCamera.Source = LeftCameraWBMP;
         }
-        private void Image_CenterCameraMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private void Image_CentralCameraMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             LeftCameraSmall.Visibility = Visibility.Collapsed;
             RightCameraSmall.Visibility = Visibility.Collapsed;
-            CenterCameraSmall.Visibility = Visibility.Collapsed;
+            CentralCameraSmall.Visibility = Visibility.Collapsed;
             MainCamera.Visibility = Visibility.Collapsed;
             BigMainCamera.Visibility = Visibility.Visible;
-            BigMainCamera.Source = wbmp1;
+            BigMainCamera.Source = CentralCameraWBMP;
         }
-        private void Image_CenterCameraTermovisionMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private void Image_CentralCameraTermovisionMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             LeftCameraSmall.Visibility = Visibility.Collapsed;
             RightCameraSmall.Visibility = Visibility.Collapsed;
-            CenterCameraSmall.Visibility = Visibility.Collapsed;
+            CentralCameraSmall.Visibility = Visibility.Collapsed;
             MainCamera.Visibility = Visibility.Collapsed;
             BigMainCamera.Visibility = Visibility.Visible;
             BigMainCamera.Source = wbmpThermoVision;
@@ -757,13 +799,13 @@ namespace Camera_WPF_HCNetSDK
         {
             // Rozpoczęcie podglądu
             MainCamera.Source = wbmpThermoVision;
-            CenterCameraSmall.Source = wbmp1;
-            RightCameraSmall.Source = wbmp2;
-            LeftCameraSmall.Source = wbmp3;
+            CentralCameraSmall.Source = CentralCameraWBMP;
+            RightCameraSmall.Source = LeftCameraWBMP;
+            LeftCameraSmall.Source = RigthCameraWBMP;
 
             LeftCameraSmall.Visibility = Visibility.Visible;
             RightCameraSmall.Visibility = Visibility.Visible;
-            CenterCameraSmall.Visibility = Visibility.Visible;
+            CentralCameraSmall.Visibility = Visibility.Visible;
             MainCamera.Visibility = Visibility.Visible;
 
             BigMainCamera.Visibility = Visibility.Collapsed;
