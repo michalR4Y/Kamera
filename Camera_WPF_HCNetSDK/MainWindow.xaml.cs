@@ -44,46 +44,59 @@ namespace Camera_WPF_HCNetSDK
         public int LeftCamera_Id = -1;
         public int RigthCamera_Id = -1;
 
-        public IntPtr pUser1 = new IntPtr();
-        public IntPtr pUser2 = new IntPtr();
-        public IntPtr pUser3 = new IntPtr();
+        public IntPtr pUserCentral = new IntPtr();
+        public IntPtr pUserLeft = new IntPtr();
+        public IntPtr pUserRigth = new IntPtr();
         public IntPtr pUserThermoVision = new IntPtr();
         public IntPtr pUser1_HD = new IntPtr();
+        public IntPtr pUser2_HD = new IntPtr();
+        public IntPtr pUser3_HD = new IntPtr();
+        public IntPtr pUserThermoVision_HD = new IntPtr();
 
         public int play_handle_Central = 0;
         public int play_handleLeft = 0;
         public int play_handleRigth = 0;
         public int play_handle_ThermoVision = 0;
         public int play_handle_Central_HD = 0;
+        public int play_handle_Left_HD = 0;
+        public int play_handle_Rigth_HD = 0;
+        public int play_handle_ThermoVision_HD = 0;
 
         int m_Port_Center_Camera = -1;
-        int m_Port_Center_Camera_HD = -1;
         int m_Port_Left_Camera = -1;
         int m_Port_Right_Camera = -1;
         int m_Port_Center_Camera_ThermoVision = -1;
+        int m_Port_Center_Camera_HD = -1;
+        int m_Port_Left_Camera_HD = -1;
+        int m_Port_Right_Camera_HD = -1;
+        int m_Port_Center_Camera_ThermoVision_HD = -1;
 
         private CHCNetSDK.CHCNet.REALDATACALLBACK RealDataCentralCamera; // Przechowuj delegata, by GC go nie usunął
         private CHCNetSDK.CHCNet.REALDATACALLBACK RealDataLeftCamera; // Przechowuj delegata, by GC go nie usunął
         private CHCNetSDK.CHCNet.REALDATACALLBACK RealDataRigthCamera; // Przechowuj delegata, by GC go nie usunął
         private CHCNetSDK.CHCNet.REALDATACALLBACK RealDataThermoVision; // Przechowuj delegata, by GC go nie usunął
-
         private CHCNetSDK.CHCNet.REALDATACALLBACK RealDataCentralCamera_HD; // Przechowuj delegata, by GC go nie usunął
+        private CHCNetSDK.CHCNet.REALDATACALLBACK RealDataLeftCamera_HD; // Przechowuj delegata, by GC go nie usunął
+        private CHCNetSDK.CHCNet.REALDATACALLBACK RealDataRigthCamera_HD; // Przechowuj delegata, by GC go nie usunął
+        private CHCNetSDK.CHCNet.REALDATACALLBACK RealDataThermoVision_HD; // Przechowuj delegata, by GC go nie usunął
 
         private DECCBFUN m_DecCentralCameraCallback; // Przechowuj delegata callbacku dekodowania
         private DECCBFUN m_DecLeftCameraCallback; // Przechowuj delegata callbacku dekodowania
         private DECCBFUN m_DecRigthCameraCallback; // Przechowuj delegata callbacku dekodowania
         private DECCBFUN m_DecCallbackThermoVision; // Przechowuj delegata callbacku dekodowania
         private DECCBFUN m_DecCentralCameraCallback_HD; // Przechowuj delegata callbacku dekodowania
-
-        WriteableBitmap CentralCameraWBMP_HD = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);  // Kamera centralna
-        //WriteableBitmap LeftCameraWBMP_HD = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);  // Kamera Lewa
-        //WriteableBitmap RigthCameraWBMP_HD = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);  // Kamera Prawa
-        //WriteableBitmap ThermoVisionWBMP_HD = new WriteableBitmap(1280, 720, 96, 96, PixelFormats.Bgr24, null);    // Termowizja
+        private DECCBFUN m_DecLeftCameraCallback_HD; // Przechowuj delegata callbacku dekodowania
+        private DECCBFUN m_DecRigthCameraCallback_HD; // Przechowuj delegata callbacku dekodowania
+        private DECCBFUN m_DecCallbackThermoVision_HD; // Przechowuj delegata callbacku dekodowania
 
         WriteableBitmap CentralCameraWBMP = new WriteableBitmap(704, 576, 96, 96, PixelFormats.Bgr24, null);  // Kamera centralna
         WriteableBitmap LeftCameraWBMP = new WriteableBitmap(640, 512, 96, 96, PixelFormats.Bgr24, null);  // Kamera Lewa
         WriteableBitmap RigthCameraWBMP = new WriteableBitmap(640, 512, 96, 96, PixelFormats.Bgr24, null);  // Kamera Prawa
         WriteableBitmap ThermoVisionWBMP = new WriteableBitmap(704, 576, 96, 96, PixelFormats.Bgr24, null);    // Termowizja
+        WriteableBitmap CentralCameraWBMP_HD = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);  // Kamera centralna
+        WriteableBitmap LeftCameraWBMP_HD = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);  // Kamera Lewa
+        WriteableBitmap RigthCameraWBMP_HD = new WriteableBitmap(1920, 1080, 96, 96, PixelFormats.Bgr24, null);  // Kamera Prawa
+        WriteableBitmap ThermoVisionWBMP_HD = new WriteableBitmap(1280, 720, 96, 96, PixelFormats.Bgr24, null);    // Termowizja
 
         //bool isCentralCameraWBMP_HD_Big = false;
         //bool isLeftCameraWBMP_HD_Big = false;
@@ -94,7 +107,11 @@ namespace Camera_WPF_HCNetSDK
         private byte[] rawBuffer2;
         private byte[] rawBuffer3;
         private byte[] rawBufferThermo;
-        private byte[] rawBufferHD;
+
+        private byte[] rawBuffer2_HD;
+        private byte[] rawBuffer3_HD;
+        private byte[] rawBufferThermo_HD;
+        private byte[] rawBufferCentralCamera_HD;
 
         private DirectInput directInput;
         private Joystick joystick;
@@ -118,6 +135,42 @@ namespace Camera_WPF_HCNetSDK
         {
             hPlayWnd = IntPtr.Zero,
             lChannel = Int16.Parse("1"),
+            dwStreamType = 0,   // 0-główny, 1-podstrumień
+            dwLinkMode = 0,
+            bBlocked = true,
+            dwDisplayBufNum = 1,
+            byProtoType = 0,
+            byPreviewMode = 0
+        };
+
+        CHCNetSDK.CHCNet.NET_DVR_PREVIEWINFO lpPreviewInfoLeftCamera_HD = new CHCNetSDK.CHCNet.NET_DVR_PREVIEWINFO() // Kamera lewa
+        {
+            hPlayWnd = IntPtr.Zero,
+            lChannel = Int16.Parse("1"),
+            dwStreamType = 0,   // 0-główny, 1-podstrumień
+            dwLinkMode = 0,
+            bBlocked = true,
+            dwDisplayBufNum = 1,
+            byProtoType = 0,
+            byPreviewMode = 0
+        };
+
+        CHCNetSDK.CHCNet.NET_DVR_PREVIEWINFO lpPreviewInfoRightCamera_HD = new CHCNetSDK.CHCNet.NET_DVR_PREVIEWINFO() // Kamera prawa
+        {
+            hPlayWnd = IntPtr.Zero,
+            lChannel = Int16.Parse("1"),
+            dwStreamType = 0,   // 0-główny, 1-podstrumień
+            dwLinkMode = 0,
+            bBlocked = true,
+            dwDisplayBufNum = 1,
+            byProtoType = 0,
+            byPreviewMode = 0
+        };
+
+        CHCNetSDK.CHCNet.NET_DVR_PREVIEWINFO lpPreviewInfoThermoVision_HD = new CHCNetSDK.CHCNet.NET_DVR_PREVIEWINFO() // Kamera centralna - termowizja
+        {
+            hPlayWnd = IntPtr.Zero,
+            lChannel = Int16.Parse("2"),
             dwStreamType = 0,   // 0-główny, 1-podstrumień
             dwLinkMode = 0,
             bBlocked = true,
@@ -153,13 +206,21 @@ namespace Camera_WPF_HCNetSDK
             RealDataLeftCamera = new CHCNetSDK.CHCNet.REALDATACALLBACK(RealDataLeftCameraCallback);
             RealDataRigthCamera = new CHCNetSDK.CHCNet.REALDATACALLBACK(RealDataRigthCameraCallback);
             RealDataThermoVision = new CHCNetSDK.CHCNet.REALDATACALLBACK(RealDataCallbackThermoVision);
+
             RealDataCentralCamera_HD = new CHCNetSDK.CHCNet.REALDATACALLBACK(RealDataCentralCameraCallback_HD);
+            RealDataLeftCamera_HD = new CHCNetSDK.CHCNet.REALDATACALLBACK(RealDataLeftCameraCallback_HD);
+            RealDataRigthCamera_HD = new CHCNetSDK.CHCNet.REALDATACALLBACK(RealDataRigthCameraCallback_HD);
+            RealDataThermoVision_HD = new CHCNetSDK.CHCNet.REALDATACALLBACK(RealDataCallbackThermoVision_HD);
 
             m_DecCentralCameraCallback = new DECCBFUN(DecCentralCameraCallback);
             m_DecLeftCameraCallback = new DECCBFUN(DecLeftCameraCallback);
             m_DecRigthCameraCallback = new DECCBFUN(DecRigthCameraCallback);
             m_DecCallbackThermoVision = new DECCBFUN(DecCallbackThermoVision);
+
             m_DecCentralCameraCallback_HD = new DECCBFUN(DecCentralCameraCallback_HD);
+            m_DecLeftCameraCallback_HD = new DECCBFUN(DecLeftCameraCallback_HD);
+            m_DecRigthCameraCallback_HD = new DECCBFUN(DecRigthCameraCallback_HD);
+            m_DecCallbackThermoVision_HD = new DECCBFUN(DecCallbackThermoVision_HD);
         }
 
         private void MainWindow_StateChanged(object sender, EventArgs e)
@@ -184,7 +245,6 @@ namespace Camera_WPF_HCNetSDK
                 PlayM4_Stop(m_Port_Center_Camera);
                 PlayM4_Stop(m_Port_Left_Camera);
                 PlayM4_Stop(m_Port_Right_Camera);
-
                 
                 PlayM4_CloseStream(m_Port_Center_Camera_ThermoVision);
                 PlayM4_CloseStream(m_Port_Center_Camera);
@@ -194,6 +254,19 @@ namespace Camera_WPF_HCNetSDK
                 PlayM4_Stop(m_Port_Center_Camera_HD);
                 PlayM4_CloseStream(m_Port_Center_Camera_HD);
                 CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_Central_HD);
+
+                PlayM4_Stop(m_Port_Left_Camera_HD);
+                PlayM4_CloseStream(m_Port_Left_Camera_HD);
+                CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_Left_HD);
+
+                PlayM4_Stop(m_Port_Right_Camera_HD);
+                PlayM4_CloseStream(m_Port_Right_Camera_HD);
+                CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_Rigth_HD);
+
+                PlayM4_Stop(m_Port_Center_Camera_ThermoVision_HD);
+                PlayM4_CloseStream(m_Port_Center_Camera_ThermoVision_HD);
+                CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(m_Port_Center_Camera_ThermoVision_HD);
+
 
                 CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_ThermoVision);
                 CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_Central);
@@ -278,15 +351,16 @@ namespace Camera_WPF_HCNetSDK
                 
                 if (CentralCamera_Id >= 0)
                 {
-                    play_handle_Central = CHCNetSDK.CHCNet.NET_DVR_RealPlay_V40(CentralCamera_Id, ref lpPreviewInfoCentralCamera, RealDataCentralCamera, pUser1);
+                    play_handle_Central = CHCNetSDK.CHCNet.NET_DVR_RealPlay_V40(CentralCamera_Id, ref lpPreviewInfoCentralCamera, RealDataCentralCamera, pUserCentral);
                     CentralCameraSmall.Source = CentralCameraWBMP;
                     CentralCameraSmall.Visibility = Visibility.Visible;
                 }
 
                 if (LeftCamera_Id >= 0)
                 {
-                    play_handleLeft = CHCNetSDK.CHCNet.NET_DVR_RealPlay_V40(LeftCamera_Id, ref lpPreviewInfoLeftCamera, RealDataLeftCamera, pUser2);
-                    RightCameraSmall.Source = RigthCameraWBMP;
+                    play_handleLeft = CHCNetSDK.CHCNet.NET_DVR_RealPlay_V40(LeftCamera_Id, ref lpPreviewInfoLeftCamera, RealDataLeftCamera, pUserLeft);
+                    LeftCameraSmall.Source = RigthCameraWBMP;
+                    LeftCameraSmall.Visibility = Visibility.Visible;
                     Task.Run(() =>
                     {
                         // Praca w tle
@@ -296,9 +370,9 @@ namespace Camera_WPF_HCNetSDK
                 }
                 if (RigthCamera_Id >= 0)
                 {
-                    play_handleRigth = CHCNetSDK.CHCNet.NET_DVR_RealPlay_V40(RigthCamera_Id, ref lpPreviewInfoRightCamera, RealDataRigthCamera, pUser3);
-                    LeftCameraSmall.Source = LeftCameraWBMP;
-                    LeftCameraSmall.Visibility = Visibility.Visible;
+                    play_handleRigth = CHCNetSDK.CHCNet.NET_DVR_RealPlay_V40(RigthCamera_Id, ref lpPreviewInfoRightCamera, RealDataRigthCamera, pUserRigth);
+                    RightCameraSmall.Source = RigthCameraWBMP;
+                    RightCameraSmall.Visibility = Visibility.Visible;
                     Task.Run(() =>
                     {
                         // Praca w tle
@@ -324,19 +398,28 @@ namespace Camera_WPF_HCNetSDK
             PlayM4_Stop(m_Port_Center_Camera);
             PlayM4_Stop(m_Port_Left_Camera);
             PlayM4_Stop(m_Port_Right_Camera);
+            PlayM4_Stop(m_Port_Center_Camera_ThermoVision_HD);
+            PlayM4_Stop(m_Port_Left_Camera_HD);
+            PlayM4_Stop(m_Port_Right_Camera_HD);
             PlayM4_Stop(m_Port_Center_Camera_HD);
 
             PlayM4_CloseStream(m_Port_Center_Camera_ThermoVision);
             PlayM4_CloseStream(m_Port_Center_Camera);
             PlayM4_CloseStream(m_Port_Left_Camera);
             PlayM4_CloseStream(m_Port_Right_Camera);
+            PlayM4_CloseStream(m_Port_Center_Camera_ThermoVision_HD);
+            PlayM4_CloseStream(m_Port_Left_Camera_HD);
+            PlayM4_CloseStream(m_Port_Right_Camera_HD);
             PlayM4_CloseStream(m_Port_Center_Camera_HD);
 
-            CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(m_Port_Center_Camera_ThermoVision);
+            CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_ThermoVision);
             CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_Central);
             CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handleLeft);
             CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handleRigth);
+            CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_ThermoVision_HD);
             CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_Central_HD);
+            CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_Left_HD);
+            CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_Rigth_HD);
 
             CHCNetSDK.CHCNet.NET_DVR_Logout(CentralCamera_Id);
             CHCNetSDK.CHCNet.NET_DVR_Logout(LeftCamera_Id);
@@ -377,25 +460,27 @@ namespace Camera_WPF_HCNetSDK
 
         private void Image_LeftCameraMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            play_handle_Left_HD = CHCNetSDK.CHCNet.NET_DVR_RealPlay_V40(LeftCamera_Id, ref lpPreviewInfoLeftCamera_HD, RealDataLeftCamera_HD, pUser3_HD);
+            BigMainCamera.Source = LeftCameraWBMP_HD;
             LeftCameraSmall.Visibility = Visibility.Collapsed;
             RightCameraSmall.Visibility = Visibility.Collapsed;
             CentralCameraSmall.Visibility = Visibility.Collapsed;
             MainCamera.Visibility = Visibility.Collapsed;
             BigMainCamera.Visibility = Visibility.Visible;
-            BigMainCamera.Source = LeftCameraWBMP;
         }
         private void Image_RightCameraMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            play_handle_Central_HD = CHCNetSDK.CHCNet.NET_DVR_RealPlay_V40(RigthCamera_Id, ref lpPreviewInfoRightCamera_HD, RealDataRigthCamera_HD, pUser2_HD);
+            BigMainCamera.Source = RigthCameraWBMP_HD;
             LeftCameraSmall.Visibility = Visibility.Collapsed;
             RightCameraSmall.Visibility = Visibility.Collapsed;
             CentralCameraSmall.Visibility = Visibility.Collapsed;
             MainCamera.Visibility = Visibility.Collapsed;
             BigMainCamera.Visibility = Visibility.Visible;
-            BigMainCamera.Source = RigthCameraWBMP;
         }
         private void Image_CentralCameraMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            play_handle_Central_HD = CHCNetSDK.CHCNet.NET_DVR_RealPlay_V40(CentralCamera_Id, ref lpPreviewInfoCentralCamera_HD, RealDataCentralCamera_HD, pUser1_HD);
+            play_handle_Rigth_HD = CHCNetSDK.CHCNet.NET_DVR_RealPlay_V40(CentralCamera_Id, ref lpPreviewInfoCentralCamera_HD, RealDataCentralCamera_HD, pUser1_HD);
             BigMainCamera.Source = CentralCameraWBMP_HD;
             LeftCameraSmall.Visibility = Visibility.Collapsed;
             RightCameraSmall.Visibility = Visibility.Collapsed;
@@ -405,12 +490,13 @@ namespace Camera_WPF_HCNetSDK
         }
         private void Image_CentralCameraTermovisionMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            play_handle_ThermoVision_HD = CHCNetSDK.CHCNet.NET_DVR_RealPlay_V40(CentralCamera_Id, ref lpPreviewInfoThermoVision_HD, RealDataThermoVision_HD, pUserThermoVision_HD);
+            BigMainCamera.Source = ThermoVisionWBMP_HD;
             LeftCameraSmall.Visibility = Visibility.Collapsed;
             RightCameraSmall.Visibility = Visibility.Collapsed;
             CentralCameraSmall.Visibility = Visibility.Collapsed;
             MainCamera.Visibility = Visibility.Collapsed;
             BigMainCamera.Visibility = Visibility.Visible;
-            BigMainCamera.Source = ThermoVisionWBMP;
         }
         private void Image_BigMainCameraTermovisionMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -428,6 +514,18 @@ namespace Camera_WPF_HCNetSDK
             PlayM4_Stop(m_Port_Center_Camera_HD);
             PlayM4_CloseStream(m_Port_Center_Camera_HD);
             CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_Central_HD);
+
+            PlayM4_Stop(m_Port_Left_Camera_HD);
+            PlayM4_CloseStream(m_Port_Left_Camera_HD);
+            CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_Left_HD);
+
+            PlayM4_Stop(m_Port_Right_Camera_HD);
+            PlayM4_CloseStream(m_Port_Right_Camera_HD);
+            CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_Rigth_HD);
+
+            PlayM4_Stop(m_Port_Center_Camera_ThermoVision_HD);
+            PlayM4_CloseStream(m_Port_Center_Camera_ThermoVision_HD);
+            CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_ThermoVision_HD);
 
             BigMainCamera.Visibility = Visibility.Collapsed;
             BigMainCamera.Source = null;
