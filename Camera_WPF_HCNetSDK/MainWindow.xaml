@@ -23,7 +23,7 @@
             VerticalAlignment="Stretch"
             Margin="0,0,0,0"
             Grid.RowSpan="3" Grid.Row="1"
-            MouseLeftButtonDown="Image_BigMainCameraTermovisionMouseLeftButtonDown" 
+            MouseLeftButtonDown="Image_BigMainCameraMouseLeftButtonDown" 
             Cursor="Hand"/>
         <Grid Grid.Row="0" VerticalAlignment="Top" Height="30" Background="Blue" MouseDown="TitleBar_MouseDown">
             <TextBlock Text="Camera_WPF_HCNetSDK_Main" VerticalAlignment="Center" Margin="10,0"/>
@@ -98,7 +98,7 @@
                 <Image 
                     x:Name="LeftCameraSmall" 
                     HorizontalAlignment="Stretch" 
-                    VerticalAlignment="Bottom"
+                    VerticalAlignment="Stretch"
                     MouseLeftButtonDown="Image_LeftCameraMouseLeftButtonDown" 
                     Cursor="Hand"/>
                 <TextBlock 
@@ -119,6 +119,8 @@
             <Grid Margin="2,2,2,2" Grid.Column="1">
                 <Image 
                     x:Name="CentralCameraSmall"
+                    HorizontalAlignment="Stretch" 
+                    VerticalAlignment="Stretch"
                     MouseLeftButtonDown="Image_CentralCameraMouseLeftButtonDown" 
                     Cursor="Hand"/>
                 <TextBlock 
@@ -139,6 +141,8 @@
             <Grid Margin="2,2,2,2" Grid.Column="2">
                 <Image 
                     x:Name="RightCameraSmall"
+                    HorizontalAlignment="Stretch" 
+                    VerticalAlignment="Stretch"
                     MouseLeftButtonDown="Image_RightCameraMouseLeftButtonDown" 
                     Cursor="Hand"/>
                 <TextBlock 
@@ -177,9 +181,10 @@
                 <ColumnDefinition Width="100"/>
                 <ColumnDefinition Width="100"/>
                 <ColumnDefinition Width="100"/>
+                <ColumnDefinition Width="100"/>
                 <ColumnDefinition />
                 <ColumnDefinition />
-                <ColumnDefinition />
+                <ColumnDefinition Width="100"/>
                 <ColumnDefinition Width="100"/>
             </Grid.ColumnDefinitions>
 
@@ -187,14 +192,33 @@
             <Image Margin="5,5,5,5" Grid.Column="1" Source="Icons/SztucznyHoryzont.png" HorizontalAlignment="Left" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
             <Image Margin="5,5,5,5" Grid.Column="2" Source="Icons/KompasCopy.png" HorizontalAlignment="Left" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
             <Image Margin="5,5,5,5" Grid.Column="3" Source="Icons/SztucznyHoryzont.png" HorizontalAlignment="Left" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
-            <Image Margin="5,5,5,5" Grid.Column="4" Source="Icons/KompasCopy.png" HorizontalAlignment="Left" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
-            <Image Margin="5,5,5,5" Grid.Column="5" Source="Icons/SztucznyHoryzont.png" HorizontalAlignment="Left" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5"/>
+            <Canvas x:Name="MainCanvasLeft" Background="LightGray" Grid.Column="4" >
+                <Image x:Name="BackgroundImageLeft" Source="Icons/Siatka.png" Width="100" Height="100"/>
+                <Canvas x:Name="CrosshairLeft" Width="20" Height="20" Margin="1,1,1,1">
+                    <Line X1="10" Y1="0" X2="10" Y2="20" Stroke="Red" StrokeThickness="2" />
+                    <Line X1="0" Y1="10" X2="20" Y2="10" Stroke="Red" StrokeThickness="2" />
+                </Canvas>
+            </Canvas>
+            <Canvas x:Name="MainCanvasRight" Background="LightGray" Grid.Column="5" >
+                <Image x:Name="BackgroundImageRight" Source="Icons/Siatka.png" Width="100" Height="100"/>
+                <Canvas x:Name="CrosshairRight" Width="20" Height="20" Margin="1,1,1,1">
+                    <Line X1="10" Y1="0" X2="10" Y2="20" Stroke="Red" StrokeThickness="2" />
+                    <Line X1="0" Y1="10" X2="20" Y2="10" Stroke="Red" StrokeThickness="2" />
+                </Canvas>
+            </Canvas>
 
-            <Button x:Name="ButtonStart" Grid.Column="10" FontSize="30" Content="Start" Click="ButtonStart_Click" Background="Green"/>
-            <TextBlock x:Name="StatusLabel" Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Center" TextWrapping="Wrap" Text="Szukanie kontrolera..." TextAlignment="Center" FontSize="20" Foreground="Orange" Height="80" Width="163"/>
+            <!--            <TextBlock x:Name="StatusLabelLeft" Grid.Column="6" VerticalAlignment="Top" HorizontalAlignment="Center" TextWrapping="Wrap" Text="Szukanie kontrolera..." TextAlignment="Center" FontSize="15" Foreground="Orange" Height="50" Width="163"/> -->
+            <!--            <TextBlock x:Name="StatusLabelRight" Grid.Column="6" VerticalAlignment="Top" HorizontalAlignment="Center" TextWrapping="Wrap" Text="Szukanie kontrolera..." TextAlignment="Center" FontSize="15" Foreground="Orange" Height="50" Width="163" Margin="0,50,0,0"/> -->
             <TextBox x:Name="TextBoxToRead" Grid.Column="7" HorizontalAlignment="Center" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="144" MaxLength="20" Margin="0,5,0,0"/>
-            <TextBox x:Name="TextBoxToSend" Grid.Column="7" HorizontalAlignment="Center" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="144" MaxLength="20" Margin="0,32,0,0"/>
+            <TextBox x:Name="TextBoxToSend" Grid.Column="7" HorizontalAlignment="Center" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="144" MaxLength="20" Margin="0,32,0,0" TextChanged="TextBoxToSend_TextChanged"/>
             <Button x:Name="SendButton" Grid.Column="7" Content="SEND" HorizontalAlignment="Center" Margin="0,64,0,0" VerticalAlignment="Top" Width="144" Height="26" Click="SendButton_Click"/>
+            <Button x:Name="JoyStatusRight" Grid.Column="9" Content="Joy Right" HorizontalAlignment="Center" Margin="0,64,0,0" VerticalAlignment="Top" Width="80" Height="26"/>
+            <Button x:Name="JoyStatusLeft" Grid.Column="9" Content="Joy Left" HorizontalAlignment="Center" Margin="0,13,0,0" VerticalAlignment="Top" Width="80" Height="26"/>
+            <Button x:Name="ButtonStart" Grid.Column="10" FontSize="30" Content="Start" Click="ButtonStart_Click" Background="Green"/>
+            <Button x:Name="Day_Night_Central_Status" Grid.Column="8" Content="Day/Night Central" HorizontalAlignment="Center" Margin="0,34,0,0" VerticalAlignment="Top" Width="126" Height="25" Background="Yellow" Click="Day_Night_Click_Central" />
+            <Button x:Name="Day_Night_Left_Status" Grid.Column="8" Content="Day/Night Left" HorizontalAlignment="Center" Margin="0,5,0,0" VerticalAlignment="Top" Width="126" Height="25" Background="Yellow" Click="Day_Night_Click_Left"/>
+            <Button x:Name="Day_Night_Right_Status" Grid.Column="8" Content="Day/Night Right" HorizontalAlignment="Center" Margin="0,64,0,0" VerticalAlignment="Top" Width="126" Height="25" Background="Yellow" Click="Day_Night_Click_Right"/>
+
         </Grid>
 
     </Grid>
