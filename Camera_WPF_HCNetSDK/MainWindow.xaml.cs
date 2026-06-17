@@ -7,13 +7,10 @@ using System.Drawing;             // Podstawowa obsługa Bitmap
 using System.Drawing.Imaging;     // Obsługa formatów pikseli (np. Format24bppRgb)
 using System.IO;
 using System.Linq;
-<<<<<<< HEAD
 using System.Reflection;
-=======
 using System.Net;
 using System.Net.Mail;
 using System.Net.Sockets;
->>>>>>> main
 using System.Runtime.InteropServices; // Do pracy z pamięcią (Marshal, IntPtr)
 using System.Text;
 using System.Text.Encodings.Web;
@@ -49,13 +46,6 @@ namespace Camera_WPF_HCNetSDK
         public int LeftCamera_Id = -1;
         public int RightCamera_Id = -1;
 
-<<<<<<< HEAD
-        public int play_handle1 = 0;
-        public int play_handle2 = 0;
-        public int play_handle3 = 0;
-        public int play_handle4 = 0;
-        public byte counter = 0;
-=======
         public IntPtr pUserCentral = new IntPtr();
         public IntPtr pUserLeft = new IntPtr();
         public IntPtr pUserRight = new IntPtr();
@@ -64,7 +54,6 @@ namespace Camera_WPF_HCNetSDK
         public IntPtr pUserRight_HD = new IntPtr();
         public IntPtr pUserLeft_HD = new IntPtr();
         public IntPtr pUserThermoVision_HD = new IntPtr();
->>>>>>> main
 
         public int play_handle_Central = 0;
         public int play_handle_Left = 0;
@@ -75,9 +64,6 @@ namespace Camera_WPF_HCNetSDK
         public int play_handle_Right_HD = 0;
         public int play_handle_ThermoVision_HD = 0;
 
-<<<<<<< HEAD
-        WriteableBitmap wbmp = new WriteableBitmap(2688, 1520, 96, 96, PixelFormats.Rgb24, null);
-=======
         int m_Port_Center_Camera = -1;
         int m_Port_Left_Camera = -1;
         int m_Port_Right_Camera = -1;
@@ -86,7 +72,6 @@ namespace Camera_WPF_HCNetSDK
         int m_Port_Left_Camera_HD = -1;
         int m_Port_Right_Camera_HD = -1;
         int m_Port_Center_Camera_ThermoVision_HD = -1;
->>>>>>> main
 
         private CHCNetSDK.CHCNet.REALDATACALLBACK RealDataCentralCamera; // Przechowuj delegata, by GC go nie usunął
         private CHCNetSDK.CHCNet.REALDATACALLBACK RealDataLeftCamera; // Przechowuj delegata, by GC go nie usunął
@@ -167,10 +152,6 @@ namespace Camera_WPF_HCNetSDK
             byPreviewMode = 0
         };
 
-<<<<<<< HEAD
-        [DllImport("kernel32.dll", EntryPoint = "RtlFillMemory", SetLastError = false)]
-        public static extern void FillMemory(IntPtr destination, uint length, byte fill);
-=======
         CHCNetSDK.CHCNet.NET_DVR_PREVIEWINFO lpPreviewInfoLeftCamera_HD = new CHCNetSDK.CHCNet.NET_DVR_PREVIEWINFO() // Kamera lewa
         {
             hPlayWnd = IntPtr.Zero,
@@ -182,7 +163,6 @@ namespace Camera_WPF_HCNetSDK
             byProtoType = 0,
             byPreviewMode = 0
         };
->>>>>>> main
 
         CHCNetSDK.CHCNet.NET_DVR_PREVIEWINFO lpPreviewInfoRightCamera_HD = new CHCNetSDK.CHCNet.NET_DVR_PREVIEWINFO() // Kamera prawa
         {
@@ -317,11 +297,6 @@ namespace Camera_WPF_HCNetSDK
         {
             if (state_playing)
             {
-<<<<<<< HEAD
-                NET_DVR_Logout(user_id_1);
-                NET_DVR_Logout(user_id_2);
-                NET_DVR_Logout(user_id_3);
-=======
 
                 PlayM4_Stop(m_Port_Center_Camera_ThermoVision);
                 PlayM4_Stop(m_Port_Center_Camera);
@@ -332,7 +307,6 @@ namespace Camera_WPF_HCNetSDK
                 PlayM4_CloseStream(m_Port_Center_Camera);
                 PlayM4_CloseStream(m_Port_Left_Camera);
                 PlayM4_CloseStream(m_Port_Right_Camera);
->>>>>>> main
 
                 CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_ThermoVision);
                 CHCNetSDK.CHCNet.NET_DVR_StopRealPlay(play_handle_Central);
@@ -426,17 +400,9 @@ namespace Camera_WPF_HCNetSDK
 
         private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
         {
-<<<<<<< HEAD
-            // Pobierz parametry z ramki, zamiast zakładać je na sztywno
-            int width = pFrameInfo.nWidth;
-            int height = pFrameInfo.nHeight;
-
-            if (nSize <= 0) return;
-=======
             if (e.LeftButton == MouseButtonState.Pressed)
                 this.DragMove();
         }
->>>>>>> main
 
         // Zamykanie okna
         private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -730,40 +696,14 @@ namespace Camera_WPF_HCNetSDK
 
                 try
                 {
-<<<<<<< HEAD
-                    // Sprawdź, czy bitmapa ma odpowiedni rozmiar (opcjonalnie zaktualizuj jeśli kamera zmieni rozdzielczość)
-                    if (wbmp.PixelWidth != width || wbmp.PixelHeight != height)
-                    {
-                        wbmp = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgr24, null);
-                        LeftCamera.Source = wbmp;
-                        System.Diagnostics.Debug.WriteLine("wbmp ERROR");
-                    }
 
-                    // Opcjonalnie: Sprawdź czy rozmiar wbmp zgadza się z width/height
-                    // Jeśli nie, należałoby zainicjować wbmp na nowo.
-=======
                     using (TcpClient client = new TcpClient(ModBusIpAdress, ModBusIpPort))
                     {
                         var factory = new ModbusFactory();
                         IModbusMaster master = factory.CreateMaster(client);
->>>>>>> main
 
                         byte slaveId = 1; // ID urządzenia (Unit ID)
 
-<<<<<<< HEAD
-                    // Bezpośrednie kopiowanie z pamięci SDK do pamięci karty graficznej (BackBuffer)
-                    // KOLEJNOŚĆ: Cel (WPF), Źródło (SDK), Rozmiar
-                    // NativeMethods.CopyMemory(wbmp.BackBuffer, pBuf, (uint)(stride * height));
-                  
-                    NativeMethods.CopyMemory(wbmp.BackBuffer, pBuf, (uint)nSize);
-                    //FillMemory(wbmp.BackBuffer, (uint)nSize/2, counter++);
-                    wbmp.AddDirtyRect(new Int32Rect(0, 0, width / 3, height / 3));
-                }
-                catch (Exception ex)
-                {
-                    // Logowanie błędów TODO: dodać obsługę błędu 
-                    System.Diagnostics.Debug.WriteLine("Błąd konwersji: " + ex.Message);
-=======
                         // Funkcja 03 (0x03): Read Holding Registers
                         // Metoda zwraca tablicę typu ushort[]
                         ushort[] rejestry = await master.ReadHoldingRegistersAsync(slaveId, adresStartowy, iloscRejestrów);
@@ -781,51 +721,9 @@ namespace Camera_WPF_HCNetSDK
                 catch (Exception ex)
                 {
                     MessageBox.Show($"Błąd odczytu: {ex.Message}", "Błąd sieci", MessageBoxButton.OK, MessageBoxImage.Error);
->>>>>>> main
                 }
 
-<<<<<<< HEAD
-        private void RealDataCallback(int lRealHandle, uint dwDataType, IntPtr pBuffer, uint dwBufSize, IntPtr pUser)
-        {
-            switch (dwDataType)
-            {
-                case NET_DVR_SYSHEAD:
-                    if (!PlayM4_GetPort(ref m_lPort)) return;
-                    if (dwBufSize > 0)
-                    {
-                        if (PlayM4_OpenStream(m_lPort, pBuffer, dwBufSize, 1024 * 1024))
-                        {
-                            PlayM4_SetDisplayType(m_lPort, 3); // Format RGB
-                           
-                            m_DecCallback = new DECCBFUN(DecCallback);
-                            PlayM4_SetDecCallBack(m_lPort, m_DecCallback);
-
-                            try
-                            {
-                                PlayM4_Play(m_lPort, IntPtr.Zero);
-                            }
-                            catch (Exception ex)
-                            {
-                                // Logowanie błędów TODO: dodać obsługę błędu 
-                                System.Diagnostics.Debug.WriteLine("Błąd PlayM4_Play: " + ex.Message);
-                            }
-                        }
-                    }
-                    break;
-
-                case NET_DVR_STREAMDATA: // Dane wideo
-                    if (m_lPort != -1 && dwBufSize > 0)
-                    {
-                        // Przekazanie danych do dekodera
-                        if (!PlayM4_InputData(m_lPort, pBuffer, dwBufSize))
-                        {
-                            // Ewentualna obsługa błędu przepełnienia bufora
-                        }
-                    }
-                    break;
-=======
                await Task.Delay(250); // Sprawdzaj co 1 sekundę
->>>>>>> main
             }
         }
 
